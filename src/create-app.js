@@ -71,6 +71,26 @@ export function createApp({
     response.json({ status: "ok" });
   });
 
+  app.get("/api/sessions", async (request, response) => {
+    const limit =
+      request.query.limit == null ? 8 : Number.parseInt(request.query.limit, 10);
+    const sessions = await storage.listSessions(Number.isNaN(limit) ? 8 : limit);
+
+    return response.json({
+      sessions: sessions.map((session) => ({
+        id: session.id,
+        createdAt: session.createdAt,
+        patientName: session.intake.patientName || "Unnamed patient",
+        region: session.intake.region || "Unknown region",
+        symptoms: session.assessment.symptoms,
+        actionLabel: session.assessment.actionLabel,
+        riskLevel: session.assessment.riskLevel,
+        suggestedDepartment: session.assessment.suggestedDepartment,
+        followUpCount: session.followUps?.length || 0
+      }))
+    });
+  });
+
   app.post("/api/triage", async (request, response) => {
     const payload = normalizePayload(request.body);
     const questions = buildFollowUpQuestions(payload);

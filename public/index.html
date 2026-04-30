@@ -7,155 +7,239 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-workspace">Skip to main workspace</a>
     <div class="backdrop"></div>
     <main class="shell">
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow">CareBridge / 医路桥</p>
-          <h1>医疗分诊与就医准备助手</h1>
+          <h1>Turn symptom chaos into safer care decisions.</h1>
           <p class="lede">
-            Help patients organize symptoms, understand urgency, and walk into care
-            better prepared.
+            一个面向基层与偏远地区患者的 AI 分诊与就医准备助手，帮助患者在进入医疗系统前完成
+            风险判断、病情整理与后续追踪。
           </p>
           <div class="hero-points">
             <span>AI-guided intake</span>
-            <span>Risk stratification</span>
-            <span>Visit summary</span>
-            <span>Follow-up tracking</span>
+            <span>Safe triage workflow</span>
+            <span>Doctor-ready summary</span>
+            <span>Follow-up history</span>
           </div>
         </div>
         <aside class="hero-panel">
-          <h2>Safety first</h2>
-          <p>
-            CareBridge does not replace doctors. It helps patients prepare for care
-            and flags when urgent evaluation may be needed.
-          </p>
+          <h2>What makes this production-ready</h2>
+          <ul class="hero-list">
+            <li>Red-flag aware triage decisions</li>
+            <li>Structured follow-up questions when context is incomplete</li>
+            <li>Persistent session tracking and revisit workflow</li>
+            <li>Printable, copyable visit summary for real consultations</li>
+          </ul>
         </aside>
       </section>
 
-      <section class="workspace">
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <p class="section-kicker">Step 1</p>
-              <h2>Patient intake</h2>
+      <section class="metrics">
+        <article class="metric-card">
+          <p class="metric-label">Primary mission</p>
+          <strong>Help patients act earlier</strong>
+          <span>Reduce uncertainty before the hospital visit begins.</span>
+        </article>
+        <article class="metric-card">
+          <p class="metric-label">Core workflow</p>
+          <strong>Triage -> Summary -> Follow-up</strong>
+          <span>One product flow instead of disconnected healthcare tools.</span>
+        </article>
+        <article class="metric-card">
+          <p class="metric-label">Safety posture</p>
+          <strong>No diagnosis replacement</strong>
+          <span>Decision support with explicit clinical boundaries.</span>
+        </article>
+      </section>
+
+      <section class="trust-strip" aria-label="Trust and accessibility highlights">
+        <span>WCAG-first layout</span>
+        <span>Red-flag aware triage</span>
+        <span>Doctor-ready handoff summary</span>
+        <span>Designed for underserved patients</span>
+      </section>
+
+      <section class="workspace" id="main-workspace">
+        <div class="main-column">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Care workflow</p>
+                <h2>Patient intake and guided assessment</h2>
+              </div>
+              <p class="section-copy">
+                Start with natural language. CareBridge asks only for the missing
+                signals that change urgency.
+              </p>
             </div>
-            <p class="section-copy">
-              Start with natural-language symptoms, then let the system guide any
-              missing medical context.
-            </p>
+
+            <div class="stepper" id="stepper">
+              <div class="step active" data-step="1">
+                <span>1</span>
+                <div>
+                  <strong>Intake</strong>
+                  <small>Capture symptoms and background</small>
+                </div>
+              </div>
+              <div class="step" data-step="2">
+                <span>2</span>
+                <div>
+                  <strong>Clarify</strong>
+                  <small>Answer targeted follow-up questions</small>
+                </div>
+              </div>
+              <div class="step" data-step="3">
+                <span>3</span>
+                <div>
+                  <strong>Act</strong>
+                  <small>Review guidance and follow-up plan</small>
+                </div>
+              </div>
+            </div>
+
+            <form id="intake-form" class="form-grid">
+              <label>
+                <span>Patient name</span>
+                <input name="patientName" aria-label="Patient name" placeholder="e.g. Auntie Chen" />
+              </label>
+              <label>
+                <span>Age</span>
+                <input name="age" aria-label="Age" type="number" min="0" max="120" placeholder="e.g. 63" />
+              </label>
+              <label>
+                <span>Gender</span>
+                <select name="gender" aria-label="Gender">
+                  <option value="">Select</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label>
+                <span>Region</span>
+                <input name="region" aria-label="Region" placeholder="e.g. county clinic area" />
+              </label>
+              <label class="wide">
+                <span>Main symptoms</span>
+                <input
+                  name="symptoms"
+                  aria-label="Main symptoms"
+                  placeholder="e.g. fever, cough, chest tightness"
+                />
+              </label>
+              <label class="wide">
+                <span>Symptom notes</span>
+                <textarea
+                  name="symptomNotes"
+                  aria-label="Symptom notes"
+                  rows="4"
+                  placeholder="Describe what the patient is feeling, when it started, and what has changed."
+                ></textarea>
+              </label>
+              <label>
+                <span>How many days</span>
+                <input
+                  name="symptomDays"
+                  aria-label="How many days"
+                  type="number"
+                  min="0"
+                  max="60"
+                  placeholder="e.g. 3"
+                />
+              </label>
+              <label>
+                <span>Severity</span>
+                <select name="severity" aria-label="Severity">
+                  <option value="mild">mild</option>
+                  <option value="moderate">moderate</option>
+                  <option value="severe">severe</option>
+                </select>
+              </label>
+              <label>
+                <span>Chronic conditions</span>
+                <input
+                  name="chronicConditions"
+                  aria-label="Chronic conditions"
+                  placeholder="e.g. asthma, hypertension"
+                />
+              </label>
+              <label>
+                <span>Current medication</span>
+                <input name="medications" aria-label="Current medication" placeholder="e.g. paracetamol" />
+              </label>
+              <label>
+                <span>Allergies</span>
+                <input name="allergies" aria-label="Allergies" placeholder="e.g. penicillin" />
+              </label>
+              <div class="wide actions">
+                <button id="intake-submit" type="submit" class="primary-button">
+                  Continue assessment
+                </button>
+                <button id="reset-flow" type="button" class="ghost-button">
+                  Reset flow
+                </button>
+                <p id="intake-status" class="status-line"></p>
+              </div>
+            </form>
           </div>
 
-          <form id="intake-form" class="form-grid">
-            <label>
-              <span>Patient name</span>
-              <input name="patientName" aria-label="Patient name" placeholder="e.g. Auntie Chen" />
-            </label>
-            <label>
-              <span>Age</span>
-              <input name="age" aria-label="Age" type="number" min="0" max="120" placeholder="e.g. 63" />
-            </label>
-            <label>
-              <span>Gender</span>
-              <select name="gender" aria-label="Gender">
-                <option value="">Select</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-                <option value="other">Other</option>
-              </select>
-            </label>
-            <label>
-              <span>Region</span>
-              <input name="region" aria-label="Region" placeholder="e.g. county clinic area" />
-            </label>
-            <label class="wide">
-              <span>Main symptoms</span>
-              <input
-                name="symptoms"
-                aria-label="Main symptoms"
-                placeholder="e.g. fever, cough, chest tightness"
-              />
-            </label>
-            <label class="wide">
-              <span>Symptom notes</span>
-              <textarea
-                name="symptomNotes"
-                aria-label="Symptom notes"
-                rows="4"
-                placeholder="Describe what the patient is feeling, when it started, and what has changed."
-              ></textarea>
-            </label>
-            <label>
-              <span>How many days</span>
-              <input
-                name="symptomDays"
-                aria-label="How many days"
-                type="number"
-                min="0"
-                max="60"
-                placeholder="e.g. 3"
-              />
-            </label>
-            <label>
-              <span>Severity</span>
-              <select name="severity" aria-label="Severity">
-                <option value="mild">mild</option>
-                <option value="moderate">moderate</option>
-                <option value="severe">severe</option>
-              </select>
-            </label>
-            <label>
-              <span>Chronic conditions</span>
-              <input
-                name="chronicConditions"
-                aria-label="Chronic conditions"
-                placeholder="e.g. asthma, hypertension"
-              />
-            </label>
-            <label>
-              <span>Current medication</span>
-              <input name="medications" aria-label="Current medication" placeholder="e.g. paracetamol" />
-            </label>
-            <label>
-              <span>Allergies</span>
-              <input name="allergies" aria-label="Allergies" placeholder="e.g. penicillin" />
-            </label>
-            <div class="wide actions">
-              <button id="intake-submit" type="submit" class="primary-button">
-                Continue assessment
+          <div id="follow-up-panel" class="panel hidden">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Targeted clarification</p>
+                <h2>Answer the missing risk signals</h2>
+              </div>
+              <p class="section-copy">
+                These follow-up questions are generated only when they materially
+                affect urgency or doctor handoff quality.
+              </p>
+            </div>
+            <form id="questions-form" class="form-grid"></form>
+          </div>
+
+          <div id="result-panel" class="panel hidden">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Care action plan</p>
+                <h2>Triage result and next steps</h2>
+              </div>
+              <p class="section-copy">
+                Review the care recommendation, export a doctor-facing summary, and
+                continue follow-up over time.
+              </p>
+            </div>
+            <div id="result-content"></div>
+          </div>
+        </div>
+
+        <aside class="side-column">
+          <div class="panel side-panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Demo presets</p>
+                <h2>Load a realistic patient case</h2>
+              </div>
+            </div>
+            <div id="preset-list" class="preset-list"></div>
+          </div>
+
+          <div class="panel side-panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-kicker">Recent triage sessions</p>
+                <h2>Caseboard</h2>
+              </div>
+              <button id="refresh-sessions" type="button" class="ghost-button small-button">
+                Refresh
               </button>
-              <p id="intake-status" class="status-line"></p>
             </div>
-          </form>
-        </div>
-
-        <div id="follow-up-panel" class="panel hidden">
-          <div class="panel-header">
-            <div>
-              <p class="section-kicker">Step 2</p>
-              <h2>Targeted follow-up</h2>
+            <div id="session-list" class="session-list">
+              <p class="section-copy">No sessions yet. Complete an assessment to build the caseboard.</p>
             </div>
-            <p class="section-copy">
-              A few missing signals can change risk. Fill in the guided questions
-              below to generate care guidance.
-            </p>
           </div>
-          <form id="questions-form" class="form-grid"></form>
-        </div>
-
-        <div id="result-panel" class="panel hidden">
-          <div class="panel-header">
-            <div>
-              <p class="section-kicker">Step 3</p>
-              <h2>Triage result</h2>
-            </div>
-            <p class="section-copy">
-              Clear next steps for the patient, plus a structured summary for the
-              doctor.
-            </p>
-          </div>
-          <div id="result-content"></div>
-        </div>
+        </aside>
       </section>
     </main>
 
@@ -176,4 +260,3 @@
     <script type="module" src="/app.js"></script>
   </body>
 </html>
-

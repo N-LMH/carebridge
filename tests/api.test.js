@@ -111,4 +111,52 @@ describe("CareBridge API", () => {
     expect(listFollowUps.body.session.followUps).toHaveLength(1);
     expect(listFollowUps.body.session.followUps[0].note).toBe("No new symptoms");
   });
+
+  it("lists recent triage sessions for the dashboard", async () => {
+    const { client } = await buildClient();
+
+    await client.post("/api/triage").send({
+      patientName: "Recent One",
+      age: 24,
+      gender: "male",
+      region: "county",
+      symptoms: ["sore throat"],
+      symptomNotes: "Mild sore throat and no fever",
+      symptomDays: 1,
+      severity: "mild",
+      breathingDifficulty: "none",
+      symptomsWorsening: false,
+      maxTemperatureC: 37.1,
+      chronicConditions: [],
+      medications: "none",
+      allergies: "none",
+      chestPain: false
+    });
+
+    await client.post("/api/triage").send({
+      patientName: "Recent Two",
+      age: 61,
+      gender: "female",
+      region: "village",
+      symptoms: ["fever", "cough"],
+      symptomNotes: "Fever for three days and worsening cough",
+      symptomDays: 3,
+      severity: "moderate",
+      breathingDifficulty: "mild",
+      symptomsWorsening: true,
+      maxTemperatureC: 38.6,
+      chronicConditions: ["hypertension"],
+      medications: "paracetamol",
+      allergies: "none",
+      chestPain: false
+    });
+
+    const response = await client.get("/api/sessions");
+
+    expect(response.status).toBe(200);
+    expect(response.body.sessions).toHaveLength(2);
+    expect(response.body.sessions[0].patientName).toBe("Recent Two");
+    expect(response.body.sessions[0].actionLabel).toBe("24小时内线下就医");
+    expect(response.body.sessions[1].patientName).toBe("Recent One");
+  });
 });

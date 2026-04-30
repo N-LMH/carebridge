@@ -21,7 +21,7 @@ test("user can complete a triage flow and save a follow-up", async ({ page }) =>
     page.getByRole("heading", { name: "24小时内线下就医" })
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Visit summary" })
+    page.getByRole("heading", { name: "Printable handoff for the doctor" })
   ).toBeVisible();
 
   await page.getByLabel("Current temperature").fill("38.1");

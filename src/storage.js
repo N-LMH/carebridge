@@ -30,6 +30,10 @@ export function createStorage(dataFile) {
       await writeDb(db);
       return session;
     },
+    async listSessions(limit = 8) {
+      const db = await readDb();
+      return db.sessions.slice(0, limit);
+    },
     async getSession(id) {
       const db = await readDb();
       return db.sessions.find((session) => session.id === id) || null;
@@ -49,4 +53,3 @@ export function createStorage(dataFile) {
     }
   };
 }
-
