@@ -7,6 +7,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "build:deck": "node scripts/generate-pitch-deck.mjs",
+    "capture:screenshots": "node scripts/capture-screenshots.mjs",
+    "build:pdf": "python scripts/generate_hackathon_pdf.py",
     "test": "npm run test:coverage && npm run test:e2e",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test"

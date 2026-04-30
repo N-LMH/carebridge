@@ -41,3 +41,6 @@ temp/
 data/*.json
 playwright-report/
 test-results/
+doc/pdf-preview/
+doc/CareBridge-Hackathon-Deck-v2.pptx
+doc/CareBridge-Hackathon-Deck-v3.pptx

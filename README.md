@@ -47,10 +47,10 @@ CareBridge focuses on the moment before diagnosis: the handoff between symptom u
 This repository includes a complete local MVP with:
 
 - An Express API for triage and follow-up workflows
-- A polished mobile-friendly frontend
+- A delivery-ready clinical workspace frontend
 - File-based local persistence for sessions
 - Unit, integration, and end-to-end tests
-- Product and pitch documentation for hackathon submission
+- Product, PDF, screenshot, and submission documentation for hackathon delivery
 
 ## Tech Stack
 
@@ -75,6 +75,8 @@ http://127.0.0.1:4173
 ## Test Commands
 
 ```bash
+npm run capture:screenshots
+npm run build:pdf
 npm run test:coverage
 npm run test:e2e
 npm test
@@ -133,6 +135,7 @@ The current product flow supports:
 - [PPT 大纲](./doc/PPT大纲.md)
 - [视频脚本](./doc/视频脚本.md)
 - [提交清单](./doc/提交清单.md)
+- [提交 PDF](./doc/CareBridge-Hackathon-Deck.pdf)
 
 ## Hackathon Positioning
 
@@ -146,4 +149,3 @@ CareBridge is designed to score well on:
 ## Vision
 
 Healthcare support should begin before the patient reaches a doctor, not only after.
-
