@@ -37,3 +37,7 @@ tmp/
 temp/
 *.tmp
 
+# App runtime / reports
+data/*.json
+playwright-report/
+test-results/

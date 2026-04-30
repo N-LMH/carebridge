@@ -41,12 +41,64 @@ The first version does **not** aim to:
 - Prescribe medication
 - Integrate directly with hospital systems
 
+## What Is Built
+
+This repository now includes a working MVP with:
+
+- An Express API for triage assessment and follow-up records
+- A polished mobile-friendly web interface
+- File-based persistence for triage sessions
+- Unit and integration tests with Vitest
+- End-to-end browser validation with Playwright
+
+## Tech Stack
+
+- Frontend: vanilla HTML, CSS, and browser-side JavaScript
+- Backend: `Node.js` + `Express`
+- Persistence: local JSON storage in `data/`
+- Testing: `Vitest`, `Supertest`, and `Playwright`
+
+## Getting Started
+
+```bash
+npm install
+npm start
+```
+
+The app runs at:
+
+```text
+http://127.0.0.1:4173
+```
+
+## Test Commands
+
+```bash
+npm run test:coverage
+npm run test:e2e
+npm test
+```
+
 ## Repository Structure
 
 ```text
 .
 ├── README.md
-├── .gitignore
+├── package.json
+├── server.js
+├── public
+│   ├── index.html
+│   ├── styles.css
+│   └── app.js
+├── src
+│   ├── create-app.js
+│   ├── storage.js
+│   └── triage-engine.js
+├── tests
+│   ├── api.test.js
+│   ├── triage-engine.test.js
+│   └── e2e
+│       └── carebridge.spec.js
 └── doc
     ├── 产品设计.md
     └── PPT大纲.md
@@ -68,12 +120,16 @@ The recommended demo follows one realistic patient journey:
 5. A structured visit summary is generated for the doctor
 6. The user continues follow-up tracking if immediate emergency care is not required
 
-## Suggested Tech Stack
+## MVP Behavior
 
-- Frontend: `Next.js` or `React`
-- Backend: `Node.js`
-- Database: `Supabase` or `Firebase`
-- AI capabilities: symptom parsing, clarification prompts, summary generation, safe explanation text
+The current product flow supports:
+
+1. Patient intake with profile and symptom description
+2. Dynamic follow-up questions when medical context is incomplete
+3. Risk stratification into four action levels
+4. Suggested department and immediate next steps
+5. Structured visit summary for doctor handoff
+6. Follow-up logging for later symptom tracking
 
 ## Hackathon Deliverables
 
@@ -88,4 +144,3 @@ For this hackathon, the project is intended to support:
 CareBridge is built around a simple belief:
 
 Healthcare support should begin before the hospital visit, not only after the patient reaches a doctor.
-
