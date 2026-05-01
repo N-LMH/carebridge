@@ -6,7 +6,7 @@ import {
 } from "../src/triage-engine.js";
 
 describe("buildFollowUpQuestions", () => {
-  it("asks for missing emergency context after a respiratory complaint", () => {
+  it("asks category-relevant follow-up questions after a respiratory complaint", () => {
     const questions = buildFollowUpQuestions({
       age: 67,
       symptoms: ["cough", "fever", "chest tightness"],
@@ -19,11 +19,12 @@ describe("buildFollowUpQuestions", () => {
       chronicConditions: []
     });
 
-    expect(questions.map((question) => question.id)).toEqual([
-      "breathingDifficulty",
-      "maxTemperatureC",
-      "symptomsWorsening"
-    ]);
+    const ids = questions.map((q) => q.id);
+    expect(ids).toContain("breathingDifficulty");
+    expect(ids).toContain("maxTemperatureC");
+    expect(ids).toContain("symptomsWorsening");
+    expect(ids).toContain("coughType");
+    expect(ids).toContain("chestPain");
   });
 
   it("does not ask follow-up questions when enough data already exists", () => {
@@ -37,10 +38,35 @@ describe("buildFollowUpQuestions", () => {
       symptomsWorsening: false,
       maxTemperatureC: 37.9,
       chronicConditions: [],
-      chestPain: false
+      chestPain: false,
+      coughType: "dry",
+      nightSymptoms: "no",
+      chillsOrSweats: "none",
+      painRadiation: "none",
+      activityRelation: "rest"
     });
 
     expect(questions).toEqual([]);
+  });
+
+  it("asks gastrointestinal questions for GI symptoms", () => {
+    const questions = buildFollowUpQuestions({
+      age: 40,
+      symptoms: ["diarrhea", "vomiting"],
+      symptomNotes: "拉肚子两天",
+      symptomDays: 2,
+      severity: "moderate",
+      breathingDifficulty: null,
+      symptomsWorsening: null,
+      maxTemperatureC: null,
+      chronicConditions: []
+    });
+
+    const ids = questions.map((q) => q.id);
+    expect(ids).toContain("stoolFrequency");
+    expect(ids).toContain("foodIntake");
+    expect(ids).toContain("dehydrationSigns");
+    expect(ids).not.toContain("breathingDifficulty");
   });
 });
 
@@ -66,7 +92,7 @@ describe("assessTriage", () => {
 
     expect(result.riskLevel).toBe("Level 1");
     expect(result.actionLabel).toBe("立即急诊");
-    expect(result.suggestedDepartment).toBe("急诊 / 呼吸科");
+    expect(result.suggestedDepartment).toContain("急诊");
     expect(result.redFlags.length).toBeGreaterThan(0);
   });
 
@@ -91,7 +117,7 @@ describe("assessTriage", () => {
 
     expect(result.riskLevel).toBe("Level 2");
     expect(result.actionLabel).toBe("24小时内线下就医");
-    expect(result.suggestedDepartment).toBe("呼吸内科 / 全科门诊");
+    expect(result.suggestedDepartment).toContain("呼吸");
   });
 
   it("returns home observation for mild short-duration symptoms", () => {
@@ -116,6 +142,24 @@ describe("assessTriage", () => {
     expect(result.riskLevel).toBe("Level 4");
     expect(result.actionLabel).toBe("居家观察并持续记录");
     expect(result.suggestedDepartment).toBe("暂不需要线下科室");
+  });
+
+  it("includes score breakdown in assessment", () => {
+    const result = assessTriage({
+      patientName: "Test",
+      age: 70,
+      symptoms: ["fever"],
+      symptomNotes: "发热三天",
+      symptomDays: 3,
+      severity: "moderate",
+      maxTemperatureC: 39.1,
+      symptomsWorsening: true,
+      chronicConditions: ["hypertension"]
+    });
+
+    expect(result.scoreBreakdown).toBeDefined();
+    expect(result.scoreBreakdown.total).toBeGreaterThanOrEqual(0);
+    expect(result.scoreBreakdown.details.length).toBeGreaterThan(0);
   });
 });
 

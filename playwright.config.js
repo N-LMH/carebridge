@@ -8,9 +8,9 @@ export default defineConfig({
     channel: "chrome"
   },
   webServer: {
-    command: "node server.js",
+    command: "npm run build:client && node server.js",
     url: "http://127.0.0.1:4173",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120000
   }
 });

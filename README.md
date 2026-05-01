@@ -1,36 +1,36 @@
 # CareBridge / 医路桥
 
-CareBridge is a healthcare triage and visit-preparation assistant built for hackathon delivery. It helps underserved patients describe symptoms clearly, receive safe next-step guidance, and generate a doctor-ready summary before reaching formal care.
+CareBridge is a healthcare triage and visit-preparation assistant built for hackathon delivery. It helps patients describe symptoms clearly, receive conservative next-step guidance, and generate a doctor-ready handoff before reaching formal care.
 
-`医路桥` 不是一个替代医生诊断的工具，而是一个把医疗支持前移的产品：帮助患者更早判断风险、更完整整理病情、并在正式就医前就完成高质量准备。
+`医路桥` 不是替代医生诊断的工具，而是把医疗支持前移：帮助患者更早判断风险、更完整整理病情，并在正式就医前完成高质量准备。
 
 ![CareBridge home](./doc/screenshots/home.png)
 
-## What It Solves
+## Product Value
 
-Patients in rural, county, or underserved settings often face the same early-stage problems:
+Patients in rural, county, or underserved settings often struggle before diagnosis begins:
 
-- They do not know whether symptoms are urgent
-- They are unsure which department to visit
-- They cannot explain symptoms clearly
-- Family members struggle to coordinate medical context
-- Doctors lose time reconstructing fragmented information
+- They do not know whether symptoms are urgent.
+- They are unsure which department to visit.
+- They cannot explain symptoms clearly under pressure.
+- Family members lack a shared record of symptom changes.
+- Doctors lose time reconstructing fragmented information.
 
-CareBridge focuses on the moment before diagnosis: the handoff between symptom uncertainty and real medical care.
+CareBridge focuses on the handoff between symptom uncertainty and real medical care.
 
 ## Product Highlights
 
-- Guided patient intake with natural-language symptom capture
-- Dynamic follow-up questions only when missing information changes risk
-- Four-level triage output with explicit next-step guidance
-- Doctor-ready visit summary that can be copied, downloaded, or printed
-- Follow-up logging for symptom progression
-- Recent-case dashboard for revisiting prior sessions
-- Accessibility-first interface tuned for healthcare trust and clarity
+- Guided patient intake with bilingual symptom support.
+- Dynamic follow-up questions only when missing context changes risk.
+- Four-level triage output with explicit next-step guidance.
+- Doctor-ready visit summary for copy, print, or handoff.
+- Follow-up logging for symptom progression.
+- Recent-case sidebar for revisiting prior sessions.
+- Clear medical safety boundaries throughout the interface.
 
 ## Screens
 
-### Intake and caseboard
+### Intake workspace
 
 ![CareBridge intake](./doc/screenshots/home.png)
 
@@ -42,76 +42,104 @@ CareBridge focuses on the moment before diagnosis: the handoff between symptom u
 
 ![CareBridge follow-up](./doc/screenshots/follow-up.png)
 
-## What Is Built
-
-This repository includes a complete local MVP with:
-
-- An Express API for triage and follow-up workflows
-- A delivery-ready clinical workspace frontend
-- File-based local persistence for sessions
-- Unit, integration, and end-to-end tests
-- Product, PDF, screenshot, and submission documentation for hackathon delivery
-
 ## Tech Stack
 
-- Frontend: vanilla HTML, CSS, and browser-side JavaScript
+- Frontend: `Vue 3`, `Vite`, `Pinia`, `Vue Router`, TypeScript
 - Backend: `Node.js` + `Express`
 - Persistence: local JSON storage in `data/`
-- Testing: `Vitest`, `Supertest`, and `Playwright`
+- Testing: `Vitest`, `Supertest`, `Playwright`
+- Delivery assets: generated screenshots and PDF deck
 
 ## Getting Started
 
+Install dependencies:
+
 ```bash
 npm install
+```
+
+Build the production client and start the server:
+
+```bash
+npm run build
 npm start
 ```
 
-The app runs at:
+Open:
 
 ```text
 http://127.0.0.1:4173
 ```
 
-## Test Commands
+## Development
+
+For frontend iteration, run the API and Vite dev server in two terminals:
 
 ```bash
-npm run capture:screenshots
-npm run build:pdf
+npm run dev
+npm run dev:client
+```
+
+Open:
+
+```text
+http://127.0.0.1:5173
+```
+
+## Verification
+
+```bash
+npm run type-check
+npm run build
 npm run test:coverage
 npm run test:e2e
 npm test
 ```
 
+Regenerate submission assets:
+
+```bash
+npm run capture:screenshots
+npm run build:pdf
+```
+
 ## Demo Flow
 
-The current product flow supports:
-
-1. Patient intake with symptom description and background
-2. Targeted follow-up questions for missing risk signals
-3. Risk stratification into four action levels
-4. Suggested department and immediate care steps
-5. Structured visit summary for doctor handoff
-6. Follow-up logging and case revisit workflow
+1. Enter patient profile, symptoms, duration, and severity.
+2. Answer targeted follow-up questions for missing risk signals.
+3. Review risk level, reasoning, department suggestion, and immediate steps.
+4. Open the doctor-facing handoff summary.
+5. Save a follow-up record after observing symptom changes.
+6. Revisit prior sessions from the recent-case sidebar.
 
 ## Safety Boundaries
 
-- CareBridge does **not** provide final medical diagnosis
-- It does **not** replace licensed clinicians
-- Red-flag symptoms are escalated conservatively
-- All outputs are for pre-visit guidance and doctor handoff only
+- CareBridge does not provide final medical diagnosis.
+- It does not replace licensed clinicians.
+- Red-flag symptoms are escalated conservatively.
+- Outputs are for pre-visit guidance and doctor handoff only.
+- The MVP stores sessions locally in `data/`.
 
 ## Repository Structure
 
 ```text
 .
-├── README.md
-├── package.json
-├── server.js
-├── public
-│   ├── index.html
-│   ├── styles.css
-│   ├── app.js
-│   └── logo.svg
+├── client
+│   └── src
+│       ├── components
+│       ├── stores
+│       ├── services
+│       └── views
+├── doc
+│   ├── CareBridge-Hackathon-Deck.pdf
+│   ├── 产品设计.md
+│   ├── PPT大纲.md
+│   ├── 视频脚本.md
+│   ├── 提交清单.md
+│   └── screenshots
+├── scripts
+│   ├── capture-screenshots.mjs
+│   └── generate_hackathon_pdf.py
 ├── src
 │   ├── create-app.js
 │   ├── storage.js
@@ -120,13 +148,7 @@ The current product flow supports:
 │   ├── api.test.js
 │   ├── triage-engine.test.js
 │   └── e2e
-│       └── carebridge.spec.js
-└── doc
-    ├── 产品设计.md
-    ├── PPT大纲.md
-    ├── 视频脚本.md
-    ├── 提交清单.md
-    └── screenshots
+└── server.js
 ```
 
 ## Documentation
@@ -139,13 +161,6 @@ The current product flow supports:
 
 ## Hackathon Positioning
 
-CareBridge is designed to score well on:
-
-- **Practicality**: clear user problem and realistic workflow
-- **Execution**: working product with tested core flow
-- **Impact**: healthcare accessibility for underserved patients
-- **Responsibility**: explicit medical safety boundaries
-
-## Vision
+CareBridge is designed to score well on practicality, execution, healthcare impact, and responsible product boundaries. The project is a working local MVP with tests, screenshots, PDF materials, and a complete demo path.
 
 Healthcare support should begin before the patient reaches a doctor, not only after.

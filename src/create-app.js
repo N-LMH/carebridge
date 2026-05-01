@@ -15,11 +15,115 @@ function buildId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function validateTriagePayload(body) {
+  const errors = [];
+
+  // symptoms: required, must be non-empty after splitting and trimming
+  const symptoms = Array.isArray(body.symptoms)
+    ? body.symptoms
+    : String(body.symptoms || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+  if (symptoms.length === 0) {
+    errors.push({ field: "symptoms", message: "Symptoms are required" });
+  }
+
+  // symptomDays: if provided, must be >= 0 and <= 365
+  if (body.symptomDays != null && body.symptomDays !== "") {
+    const days = Number(body.symptomDays);
+    if (Number.isNaN(days) || days < 0 || days > 365) {
+      errors.push({ field: "symptomDays", message: "Symptom days must be between 0 and 365" });
+    }
+  }
+
+  // age: if provided, must be >= 0 and <= 150
+  if (body.age != null && body.age !== "") {
+    const age = Number(body.age);
+    if (Number.isNaN(age) || age < 0 || age > 150) {
+      errors.push({ field: "age", message: "Age must be between 0 and 150" });
+    }
+  }
+
+  // severity: if provided, must be one of "mild", "moderate", "severe"
+  if (body.severity != null && body.severity !== "") {
+    const severity = String(body.severity).trim();
+    if (!["mild", "moderate", "severe"].includes(severity)) {
+      errors.push({ field: "severity", message: "Severity must be one of: mild, moderate, severe" });
+    }
+  }
+
+  // maxTemperatureC: if provided, must be >= 30 and <= 45
+  if (body.maxTemperatureC != null && body.maxTemperatureC !== "") {
+    const temp = Number(body.maxTemperatureC);
+    if (Number.isNaN(temp) || temp < 30 || temp > 45) {
+      errors.push({ field: "maxTemperatureC", message: "Max temperature must be between 30 and 45" });
+    }
+  }
+
+  // patientName: max 100 characters
+  if (String(body.patientName || "").length > 100) {
+    errors.push({ field: "patientName", message: "Patient name must be at most 100 characters" });
+  }
+
+  // symptomNotes: max 2000 characters
+  if (String(body.symptomNotes || "").length > 2000) {
+    errors.push({ field: "symptomNotes", message: "Symptom notes must be at most 2000 characters" });
+  }
+
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+  return { valid: true };
+}
+
+function validateFollowUpPayload(body) {
+  const errors = [];
+
+  const hasField =
+    (body.temperatureC != null && body.temperatureC !== "") ||
+    (body.symptomChange != null && String(body.symptomChange).trim() !== "") ||
+    (body.medicationTaken != null && String(body.medicationTaken).trim() !== "") ||
+    (body.note != null && String(body.note).trim() !== "");
+
+  if (!hasField) {
+    errors.push({ field: "_root", message: "At least one field must be provided" });
+  }
+
+  // temperatureC: if provided, must be >= 30 and <= 45
+  if (body.temperatureC != null && body.temperatureC !== "") {
+    const temp = Number(body.temperatureC);
+    if (Number.isNaN(temp) || temp < 30 || temp > 45) {
+      errors.push({ field: "temperatureC", message: "Temperature must be between 30 and 45" });
+    }
+  }
+
+  // note: max 1000 characters
+  if (String(body.note || "").length > 1000) {
+    errors.push({ field: "note", message: "Note must be at most 1000 characters" });
+  }
+
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+  return { valid: true };
+}
+
 function normalizeBoolean(value) {
   if (value === true || value === false) return value;
   if (value === "yes" || value === "true") return true;
   if (value === "no" || value === "false") return false;
   return null;
+}
+
+function normalizeOptionalString(value) {
+  if (value == null || value === "") return null;
+  return String(value).trim();
+}
+
+function normalizeOptionalNumber(value) {
+  if (value == null || value === "") return null;
+  return Number(value);
 }
 
 function normalizePayload(body) {
@@ -54,7 +158,18 @@ function normalizePayload(body) {
           .filter(Boolean),
     medications: String(body.medications || "").trim(),
     allergies: String(body.allergies || "").trim(),
-    chestPain: normalizeBoolean(body.chestPain)
+    chestPain: normalizeBoolean(body.chestPain),
+    coughType: normalizeOptionalString(body.coughType),
+    nightSymptoms: normalizeOptionalString(body.nightSymptoms),
+    chillsOrSweats: normalizeOptionalString(body.chillsOrSweats),
+    stoolFrequency: normalizeOptionalNumber(body.stoolFrequency),
+    foodIntake: normalizeOptionalString(body.foodIntake),
+    dehydrationSigns: normalizeOptionalString(body.dehydrationSigns),
+    painRadiation: normalizeOptionalString(body.painRadiation),
+    activityRelation: normalizeOptionalString(body.activityRelation),
+    consciousnessChanges: normalizeOptionalString(body.consciousnessChanges),
+    visionChanges: normalizeOptionalString(body.visionChanges),
+    numbness: normalizeOptionalString(body.numbness)
   };
 }
 
@@ -65,7 +180,10 @@ export function createApp({
   const storage = createStorage(dataFile);
 
   app.use(express.json());
-  app.use(express.static(path.resolve(__dirname, "../public")));
+
+  const distDir = path.resolve(__dirname, "../dist");
+
+  app.use(express.static(distDir));
 
   app.get("/api/health", (_request, response) => {
     response.json({ status: "ok" });
@@ -92,6 +210,14 @@ export function createApp({
   });
 
   app.post("/api/triage", async (request, response) => {
+    const validation = validateTriagePayload(request.body);
+    if (!validation.valid) {
+      return response.status(400).json({
+        status: "validation_error",
+        errors: validation.errors
+      });
+    }
+
     const payload = normalizePayload(request.body);
     const questions = buildFollowUpQuestions(payload);
 
@@ -132,6 +258,14 @@ export function createApp({
   });
 
   app.post("/api/sessions/:sessionId/follow-ups", async (request, response) => {
+    const validation = validateFollowUpPayload(request.body);
+    if (!validation.valid) {
+      return response.status(400).json({
+        status: "validation_error",
+        errors: validation.errors
+      });
+    }
+
     const record = {
       id: buildId("followup"),
       createdAt: new Date().toISOString(),
@@ -153,8 +287,24 @@ export function createApp({
     return response.status(201).json(result);
   });
 
+  app.all("/api/*path", (_request, response) => {
+    response.status(404).json({ status: "error", message: "Not found" });
+  });
+
   app.get(/.*/, (_request, response) => {
-    response.sendFile(path.resolve(__dirname, "../public/index.html"));
+    const indexPath = path.resolve(distDir, "index.html");
+    response.sendFile(indexPath, (err) => {
+      if (err) {
+        response
+          .status(503)
+          .send("CareBridge client is not built. Run npm run build:client first.");
+      }
+    });
+  });
+
+  app.use((err, _request, response, _next) => {
+    console.error(err);
+    response.status(500).json({ status: "error", message: "Internal server error" });
   });
 
   return app;

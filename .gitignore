@@ -33,6 +33,7 @@ desktop.ini
 
 # Runtime / Cache
 .cache/
+.omc/
 tmp/
 temp/
 *.tmp

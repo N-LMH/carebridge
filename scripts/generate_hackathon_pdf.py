@@ -116,7 +116,7 @@ def draw_image(c, path, x, top, w, h, with_frame=True, fill=None):
         top_to_y(top + inset, h - inset * 2),
         w - inset * 2,
         h - inset * 2,
-        preserveAspectRatio=False,
+        preserveAspectRatio=True,
         mask="auto",
     )
 
@@ -300,7 +300,7 @@ def execution_page(c):
     add_page(c)
     draw_header(c, "Execution", "Built and verified", "A working repo, a tested flow, and clean submission assets.")
     metrics = [
-        ("Automated tests", "10", "Unit + API tests cover triage rules and session workflows."),
+        ("Automated tests", "12", "Unit + API tests cover triage rules and session workflows."),
         ("E2E journeys", "1", "Playwright validates the main patient experience end-to-end."),
         ("Screenshots", "3", "README, PDF, and submission pages already have polished product visuals."),
         ("Repository", "Ready", "Docs, scripts, tests, and assets are packaged for submission."),
