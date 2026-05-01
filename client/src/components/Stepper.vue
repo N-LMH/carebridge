@@ -7,20 +7,24 @@
       :class="{ active: step >= s.num }"
     >
       <span class="step-num">{{ s.num }}</span>
-      <span class="step-label">{{ s.label }}</span>
+      <span class="step-label">{{ t(s.label) }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n'
+
 defineProps<{
   step: number
 }>()
 
+const { t } = useI18n()
+
 const steps = [
-  { num: 1, label: '录入' },
-  { num: 2, label: '追问' },
-  { num: 3, label: '结果' }
+  { num: 1, label: 'stepper.intake' },
+  { num: 2, label: 'stepper.followUp' },
+  { num: 3, label: 'stepper.result' }
 ]
 </script>
 

@@ -7,8 +7,8 @@
         </svg>
       </div>
       <div>
-        <h2 class="card-title">患者信息录入</h2>
-        <p class="card-desc">填写基本信息与症状描述，获取分诊建议</p>
+        <h2 class="card-title">{{ t('intake.title') }}</h2>
+        <p class="card-desc">{{ t('intake.desc') }}</p>
       </div>
     </div>
 
@@ -16,55 +16,55 @@
 
     <form @submit.prevent="handleSubmit" novalidate class="form">
       <div class="form-block">
-        <h3 class="form-block-title">基本信息</h3>
+        <h3 class="form-block-title">{{ t('intake.sectionBasic') }}</h3>
         <div class="grid grid-3">
           <label class="field">
-            <span class="field-label">患者姓名</span>
+            <span class="field-label">{{ t('intake.patientName') }}</span>
             <input
               v-model="form.patientName"
               class="field-input"
               type="text"
-              placeholder="如：张阿姨"
+              :placeholder="t('intake.patientNamePlaceholder')"
             />
           </label>
           <label class="field">
-            <span class="field-label">年龄</span>
+            <span class="field-label">{{ t('intake.age') }}</span>
             <input
               v-model.number="form.age"
               class="field-input"
               type="number"
               min="0"
               max="150"
-              placeholder="如：63"
+              :placeholder="t('intake.agePlaceholder')"
             />
           </label>
           <label class="field">
-            <span class="field-label">性别</span>
+            <span class="field-label">{{ t('intake.gender') }}</span>
             <select v-model="form.gender" class="field-select">
-              <option value="">请选择</option>
-              <option value="male">男</option>
-              <option value="female">女</option>
-              <option value="other">其他</option>
+              <option value="">{{ t('gender.empty') }}</option>
+              <option value="male">{{ t('gender.male') }}</option>
+              <option value="female">{{ t('gender.female') }}</option>
+              <option value="other">{{ t('gender.other') }}</option>
             </select>
           </label>
         </div>
         <div class="grid grid-2">
           <label class="field">
-            <span class="field-label">所在地区</span>
+            <span class="field-label">{{ t('intake.region') }}</span>
             <input
               v-model="form.region"
               class="field-input"
               type="text"
-              placeholder="如：县城诊所周边"
+              :placeholder="t('intake.regionPlaceholder')"
             />
           </label>
           <label class="field">
-            <span class="field-label">慢性病史</span>
+            <span class="field-label">{{ t('intake.chronicConditions') }}</span>
             <input
               v-model="form.chronicConditions"
               class="field-input"
               type="text"
-              placeholder="如：高血压、糖尿病"
+              :placeholder="t('intake.chronicConditionsPlaceholder')"
             />
           </label>
         </div>
@@ -73,49 +73,49 @@
       <hr class="divider" />
 
       <div class="form-block">
-        <h3 class="form-block-title">症状描述</h3>
+        <h3 class="form-block-title">{{ t('intake.sectionSymptoms') }}</h3>
         <div class="grid">
           <label class="field">
-            <span class="field-label field-label--req">主要症状</span>
+            <span class="field-label field-label--req">{{ t('intake.symptoms') }}</span>
             <input
               v-model="form.symptoms"
               class="field-input"
               type="text"
-              placeholder="多个症状用逗号分隔，如：发热、咳嗽、胸闷"
+              :placeholder="t('intake.symptomsPlaceholder')"
               required
             />
-            <span class="field-hint">支持中英文症状描述</span>
+            <span class="field-hint">{{ t('intake.symptomHint') }}</span>
           </label>
         </div>
         <div class="grid">
           <label class="field">
-            <span class="field-label">症状详细描述</span>
+            <span class="field-label">{{ t('intake.symptomNotes') }}</span>
             <textarea
               v-model="form.symptomNotes"
               class="field-textarea"
               rows="3"
-              placeholder="描述症状的具体表现，如：发热三天，夜间咳嗽加重，今日出现轻微胸闷"
+              :placeholder="t('intake.symptomNotesPlaceholder')"
             ></textarea>
           </label>
         </div>
         <div class="grid grid-2">
           <label class="field">
-            <span class="field-label">症状持续天数</span>
+            <span class="field-label">{{ t('intake.symptomDays') }}</span>
             <input
               v-model.number="form.symptomDays"
               class="field-input"
               type="number"
               min="0"
               max="365"
-              placeholder="如：3"
+              :placeholder="t('intake.symptomDaysPlaceholder')"
             />
           </label>
           <label class="field">
-            <span class="field-label">自评严重程度</span>
+            <span class="field-label">{{ t('intake.severity') }}</span>
             <select v-model="form.severity" class="field-select">
-              <option value="mild">轻度</option>
-              <option value="moderate">中度</option>
-              <option value="severe">重度</option>
+              <option value="mild">{{ t('severity.mild') }}</option>
+              <option value="moderate">{{ t('severity.moderate') }}</option>
+              <option value="severe">{{ t('severity.severe') }}</option>
             </select>
           </label>
         </div>
@@ -124,24 +124,24 @@
       <hr class="divider" />
 
       <div class="form-block">
-        <h3 class="form-block-title">用药与过敏</h3>
+        <h3 class="form-block-title">{{ t('intake.sectionMedication') }}</h3>
         <div class="grid grid-2">
           <label class="field">
-            <span class="field-label">当前用药</span>
+            <span class="field-label">{{ t('intake.medications') }}</span>
             <input
               v-model="form.medications"
               class="field-input"
               type="text"
-              placeholder="如：降压药"
+              :placeholder="t('intake.medicationsPlaceholder')"
             />
           </label>
           <label class="field">
-            <span class="field-label">过敏史</span>
+            <span class="field-label">{{ t('intake.allergies') }}</span>
             <input
               v-model="form.allergies"
               class="field-input"
               type="text"
-              placeholder="如：青霉素"
+              :placeholder="t('intake.allergiesPlaceholder')"
             />
           </label>
         </div>
@@ -153,9 +153,9 @@
           <svg v-else class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
-          {{ triageStore.loading ? '评估中...' : '开始评估' }}
+          {{ triageStore.loading ? t('common.assessing') : t('common.startAssessment') }}
         </button>
-        <button type="button" class="btn btn-outline" @click="handleReset">重置</button>
+        <button type="button" class="btn btn-outline" @click="handleReset">{{ t('common.reset') }}</button>
       </div>
 
       <p v-if="statusMessage" class="status" :class="statusClass">{{ statusMessage }}</p>
@@ -164,12 +164,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { useI18n } from '@/composables/useI18n'
+import { localizeValidationMessage } from '@/i18n/medical'
 import { useTriageStore } from '@/stores/triage'
 import Stepper from './Stepper.vue'
-import type { TriageRequest, Severity, Gender, DemoPreset } from '@/types'
+import type { DemoPreset, Gender, Severity, TriageRequest } from '@/types'
 
 const triageStore = useTriageStore()
+const { locale, t } = useI18n()
 
 const statusMessage = ref('')
 const statusType = ref<'success' | 'error' | 'neutral'>('neutral')
@@ -197,7 +200,6 @@ const statusClass = computed(() => ({
   'status--error': statusType.value === 'error'
 }))
 
-// 监听预设选择
 watch(() => triageStore.draftPayload, (payload) => {
   if (payload && Object.keys(payload).length > 0) {
     Object.assign(form, payload)
@@ -205,32 +207,34 @@ watch(() => triageStore.draftPayload, (payload) => {
 }, { deep: true })
 
 async function handleSubmit() {
-  statusMessage.value = '正在评估初始信息...'
+  statusMessage.value = t('intake.statusAssessing')
   statusType.value = 'neutral'
 
   try {
     const response = await triageStore.submitTriage({
       ...form,
       symptoms: typeof form.symptoms === 'string'
-        ? (form.symptoms as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+        ? (form.symptoms as string).split(',').map((item: string) => item.trim()).filter(Boolean)
         : form.symptoms,
       chronicConditions: typeof form.chronicConditions === 'string'
-        ? (form.chronicConditions as string).split(',').map((s: string) => s.trim()).filter(Boolean)
+        ? (form.chronicConditions as string).split(',').map((item: string) => item.trim()).filter(Boolean)
         : form.chronicConditions
     })
 
     if (response.status === 'needs_follow_up') {
-      statusMessage.value = '需要补充更多信息。'
+      statusMessage.value = t('intake.statusNeedMore')
     } else {
-      statusMessage.value = '评估完成。'
+      statusMessage.value = t('intake.statusDone')
       statusType.value = 'success'
     }
   } catch (err) {
     if (err instanceof Error && 'errors' in err) {
       const validationErrors = (err as { errors: { message: string }[] }).errors
-      statusMessage.value = validationErrors.map(e => e.message).join('；')
+      statusMessage.value = validationErrors
+        .map((error) => localizeValidationMessage(error.message, locale.value))
+        .join(locale.value === 'zh' ? '；' : '; ')
     } else {
-      statusMessage.value = '网络请求失败，请检查连接后重试。'
+      statusMessage.value = t('intake.statusNetworkError')
     }
     statusType.value = 'error'
   }
@@ -238,13 +242,13 @@ async function handleSubmit() {
 
 function handleReset() {
   triageStore.reset()
-  Object.keys(form).forEach(key => {
-    if (key === 'severity') (form as any)[key] = 'mild'
-    else if (key === 'age' || key === 'symptomDays') (form as any)[key] = null
-    else if (key === 'symptoms' || key === 'chronicConditions') (form as any)[key] = []
-    else (form as any)[key] = ''
+  Object.keys(form).forEach((key) => {
+    if (key === 'severity') (form as Record<string, unknown>)[key] = 'mild'
+    else if (key === 'age' || key === 'symptomDays') (form as Record<string, unknown>)[key] = null
+    else if (key === 'symptoms' || key === 'chronicConditions') (form as Record<string, unknown>)[key] = []
+    else (form as Record<string, unknown>)[key] = ''
   })
-  statusMessage.value = '流程已重置，可以录入新患者。'
+  statusMessage.value = t('intake.statusReset')
   statusType.value = 'neutral'
 }
 
@@ -253,14 +257,14 @@ function fillPreset(preset: DemoPreset) {
   form.age = preset.age
   form.gender = preset.gender
   form.region = preset.region
-  form.symptoms = preset.symptoms.split(',').map(s => s.trim())
+  form.symptoms = preset.symptoms.split(',').map((item) => item.trim())
   form.symptomNotes = preset.symptomNotes
   form.symptomDays = preset.symptomDays
   form.severity = preset.severity
-  form.chronicConditions = preset.chronicConditions ? preset.chronicConditions.split(',').map(s => s.trim()) : []
+  form.chronicConditions = preset.chronicConditions ? preset.chronicConditions.split(',').map((item) => item.trim()) : []
   form.medications = preset.medications
   form.allergies = preset.allergies
-  statusMessage.value = `已加载预设：${preset.title}`
+  statusMessage.value = t('intake.statusPresetLoaded', { title: preset.title })
   statusType.value = 'success'
 }
 

@@ -8,8 +8,8 @@
         </svg>
       </div>
       <div>
-        <h2 class="card-title">分诊结果</h2>
-        <p class="card-desc">查看风险评估与就诊建议</p>
+        <h2 class="card-title">{{ t('result.title') }}</h2>
+        <p class="card-desc">{{ t('result.desc') }}</p>
       </div>
     </div>
 
@@ -24,7 +24,7 @@
         @click="activeTab = tab.id"
       >
         <component :is="tab.icon" />
-        {{ tab.label }}
+        {{ t(tab.label) }}
       </button>
     </div>
 
@@ -38,12 +38,14 @@
 
 <script setup lang="ts">
 import { ref, watch, h } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import { useTriageStore } from '@/stores/triage'
 import RiskTab from './result/RiskTab.vue'
 import SummaryTab from './result/SummaryTab.vue'
 import FollowUpTab from './result/FollowUpTab.vue'
 
 const triageStore = useTriageStore()
+const { t } = useI18n()
 const activeTab = ref('risk')
 const activeSessionId = ref<string | null>(null)
 
@@ -77,9 +79,9 @@ const ChatIcon = {
 }
 
 const tabs = [
-  { id: 'risk', label: '风险分级', icon: WarningIcon },
-  { id: 'summary', label: '就诊摘要', icon: DocumentIcon },
-  { id: 'followup', label: '随访记录', icon: ChatIcon }
+  { id: 'risk', label: 'result.riskTab', icon: WarningIcon },
+  { id: 'summary', label: 'result.summaryTab', icon: DocumentIcon },
+  { id: 'followup', label: 'result.followupTab', icon: ChatIcon }
 ]
 
 watch(() => triageStore.activeSession?.id ?? null, (sessionId) => {

@@ -9,8 +9,8 @@
         </svg>
       </div>
       <div>
-        <h2 class="card-title">补充追问</h2>
-        <p class="card-desc">完善风险评估所需的关键信息</p>
+        <h2 class="card-title">{{ t('followUp.title') }}</h2>
+        <p class="card-desc">{{ t('followUp.desc') }}</p>
       </div>
     </div>
 
@@ -24,7 +24,7 @@
             class="field-select"
             :aria-label="q.label"
           >
-            <option value="">请选择</option>
+            <option value="">{{ t('common.choose') }}</option>
             <option v-for="opt in q.options" :key="opt.value" :value="opt.value">
               {{ opt.label }}
             </option>
@@ -48,20 +48,22 @@
           <svg class="btn-svg" viewBox="0 0 20 20" fill="currentColor">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/>
           </svg>
-          {{ triageStore.loading ? '评估中...' : '生成评估' }}
+          {{ triageStore.loading ? t('common.assessing') : t('common.generateAssessment') }}
         </button>
-        <button type="button" class="btn btn-outline" @click="handleBack">返回录入</button>
+        <button type="button" class="btn btn-outline" @click="handleBack">{{ t('followUp.back') }}</button>
       </div>
-      <p class="status">这些信息将完善风险评估中缺失的关键内容。</p>
+      <p class="status">{{ t('followUp.status') }}</p>
     </form>
   </section>
 </template>
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import { useTriageStore } from '@/stores/triage'
 
 const triageStore = useTriageStore()
+const { t } = useI18n()
 
 const answers = reactive<Record<string, unknown>>({})
 
@@ -83,6 +85,6 @@ async function handleSubmit() {
 
 function handleBack() {
   triageStore.setCurrentStep(1)
-  triageStore.followUpQuestions.splice(0)
+  triageStore.clearFollowUpQuestions()
 }
 </script>

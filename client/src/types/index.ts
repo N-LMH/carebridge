@@ -11,6 +11,7 @@ export interface Patient {
 }
 
 export type Gender = 'male' | 'female' | 'other' | ''
+export type Locale = 'zh' | 'en'
 
 // 症状输入
 export interface SymptomInput {

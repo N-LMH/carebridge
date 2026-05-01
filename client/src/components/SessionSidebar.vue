@@ -1,8 +1,8 @@
 <template>
   <div class="sidebar-card">
     <div class="sidebar-header-row">
-      <h3 class="sidebar-title">最近记录</h3>
-      <button class="icon-btn" @click="$emit('refresh')" aria-label="刷新">
+      <h3 class="sidebar-title">{{ t('sidebar.sessionsTitle') }}</h3>
+      <button class="icon-btn" @click="$emit('refresh')" :aria-label="t('common.refresh')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M23 4v6h-6M1 20v-6h6"/>
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
@@ -11,7 +11,7 @@
     </div>
     <div class="session-list">
       <div v-if="!sessions.length" class="empty-state">
-        暂无记录，完成评估后将显示在此处
+        {{ t('sidebar.noSessions') }}
       </div>
       <article
         v-for="session in sessions"
@@ -21,14 +21,14 @@
       >
         <div class="session-card-header">
           <div>
-            <strong>{{ session.patientName || '未署名' }}</strong>
-            <p>{{ session.region || '未知地区' }}</p>
+            <strong>{{ session.patientName || t('common.unnamedPatient') }}</strong>
+            <p>{{ session.region || t('common.unknownRegion') }}</p>
           </div>
           <span class="chip chip-risk">{{ session.actionLabel }}</span>
         </div>
         <div class="session-chips">
           <span class="chip">{{ session.suggestedDepartment }}</span>
-          <span class="followup-count">{{ session.followUpCount || 0 }} 条随访</span>
+          <span class="followup-count">{{ t('sidebar.followupCount', { count: session.followUpCount || 0 }) }}</span>
         </div>
       </article>
     </div>
@@ -36,6 +36,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n'
 import type { SessionSummary } from '@/types'
 
 defineProps<{
@@ -46,6 +47,8 @@ defineEmits<{
   refresh: []
   select: [sessionId: string]
 }>()
+
+const { t } = useI18n()
 </script>
 
 <style scoped>

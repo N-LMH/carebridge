@@ -2,13 +2,13 @@
   <div v-if="summary" class="summary-tab">
     <div class="summary-export-bar">
       <div>
-        <p class="section-kicker">就诊摘要</p>
-        <h3 class="section-heading">可打印的医生交接摘要</h3>
+        <p class="section-kicker">{{ t('summary.kicker') }}</p>
+        <h3 class="section-heading">{{ t('summary.heading') }}</h3>
       </div>
       <div class="summary-export-actions">
-        <button type="button" class="btn btn-ghost btn-sm" @click="handleCopy">复制</button>
-        <button type="button" class="btn btn-ghost btn-sm" @click="handleDownload">下载</button>
-        <button type="button" class="btn btn-ghost btn-sm" @click="handlePrint">打印</button>
+        <button type="button" class="btn btn-ghost btn-sm" @click="handleCopy">{{ t('common.copy') }}</button>
+        <button type="button" class="btn btn-ghost btn-sm" @click="handleDownload">{{ t('common.download') }}</button>
+        <button type="button" class="btn btn-ghost btn-sm" @click="handlePrint">{{ t('common.print') }}</button>
       </div>
     </div>
 
@@ -18,45 +18,45 @@
 
     <ul class="summary-field-list">
       <li>
-        <strong>主诉</strong>
+        <strong>{{ t('summary.chiefComplaint') }}</strong>
         <span>{{ summary.chiefComplaint }}</span>
       </li>
       <li>
-        <strong>起病时间</strong>
+        <strong>{{ t('summary.onset') }}</strong>
         <span>{{ summary.onset }}</span>
       </li>
       <li>
-        <strong>主要症状</strong>
+        <strong>{{ t('summary.mainSymptoms') }}</strong>
         <span>{{ summary.mainSymptoms }}</span>
       </li>
       <li>
-        <strong>伴随症状</strong>
+        <strong>{{ t('summary.associatedSymptoms') }}</strong>
         <span>{{ summary.associatedSymptoms }}</span>
       </li>
       <li>
-        <strong>既往病史</strong>
+        <strong>{{ t('summary.medicalHistory') }}</strong>
         <span>{{ summary.medicalHistory }}</span>
       </li>
       <li>
-        <strong>当前用药</strong>
+        <strong>{{ t('summary.currentMedication') }}</strong>
         <span>{{ summary.currentMedication }}</span>
       </li>
       <li>
-        <strong>过敏史</strong>
+        <strong>{{ t('summary.allergies') }}</strong>
         <span>{{ summary.allergies }}</span>
       </li>
       <li>
-        <strong>风险提示</strong>
+        <strong>{{ t('summary.riskNotes') }}</strong>
         <span>{{ summary.riskNotes }}</span>
       </li>
       <li>
-        <strong>建议科室</strong>
+        <strong>{{ t('summary.suggestedDepartment') }}</strong>
         <span>{{ summary.suggestedDepartment }}</span>
       </li>
     </ul>
 
     <div class="doctor-prompts">
-      <h4 class="section-heading">医生提示 — 就诊时请告知医生</h4>
+      <h4 class="section-heading">{{ t('summary.promptsHeading') }}</h4>
       <ol class="ordered-list">
         <li v-for="(q, i) in summary.doctorQuestions" :key="i">{{ q }}</li>
       </ol>
@@ -68,9 +68,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import { useTriageStore } from '@/stores/triage'
 
 const triageStore = useTriageStore()
+const { locale, t } = useI18n()
 const copyStatus = ref('')
 
 const summary = computed(() => triageStore.activeSession?.summary)
@@ -81,30 +83,30 @@ function buildExportText(): string {
 
   const { assessment, summary: sum } = session
   return [
-    'CareBridge / 医路桥 就诊摘要',
-    `患者：${session.intake.patientName || '未署名'}`,
-    `年龄：${session.intake.age || '未知'}`,
-    `地区：${session.intake.region || '未知'}`,
-    `风险等级：${assessment.riskLevel}`,
-    `行动建议：${assessment.actionLabel}`,
-    `建议科室：${assessment.suggestedDepartment}`,
+    t('summary.exportTitle'),
+    `${t('summary.exportPatient')}：${session.intake.patientName || t('common.unnamedPatient')}`,
+    `${t('summary.exportAge')}：${session.intake.age || (locale.value === 'zh' ? '未知' : 'Unknown')}`,
+    `${t('summary.exportRegion')}：${session.intake.region || t('common.unknownRegion')}`,
+    `${t('summary.exportRiskLevel')}：${assessment.riskLevel}`,
+    `${t('summary.exportAction')}：${assessment.actionLabel}`,
+    `${t('summary.exportDepartment')}：${assessment.suggestedDepartment}`,
     '',
-    `主诉：${sum.chiefComplaint}`,
-    `起病时间：${sum.onset}`,
-    `主要症状：${sum.mainSymptoms}`,
-    `伴随症状：${sum.associatedSymptoms}`,
-    `既往病史：${sum.medicalHistory}`,
-    `当前用药：${sum.currentMedication}`,
-    `过敏史：${sum.allergies}`,
-    `风险提示：${sum.riskNotes}`,
+    `${t('summary.chiefComplaint')}：${sum.chiefComplaint}`,
+    `${t('summary.onset')}：${sum.onset}`,
+    `${t('summary.mainSymptoms')}：${sum.mainSymptoms}`,
+    `${t('summary.associatedSymptoms')}：${sum.associatedSymptoms}`,
+    `${t('summary.medicalHistory')}：${sum.medicalHistory}`,
+    `${t('summary.currentMedication')}：${sum.currentMedication}`,
+    `${t('summary.allergies')}：${sum.allergies}`,
+    `${t('summary.riskNotes')}：${sum.riskNotes}`,
     '',
-    '即时建议：',
+    t('summary.exportImmediateSteps'),
     ...assessment.immediateSteps.map((s, i) => `${i + 1}. ${s}`),
     '',
-    '医生提示：',
+    t('summary.exportDoctorPrompts'),
     ...sum.doctorQuestions.map((q, i) => `${i + 1}. ${q}`),
     '',
-    '免责声明：',
+    t('summary.exportDisclaimer'),
     assessment.warning
   ].join('\n')
 }
@@ -112,10 +114,10 @@ function buildExportText(): string {
 async function handleCopy() {
   try {
     await navigator.clipboard.writeText(buildExportText())
-    copyStatus.value = '摘要已复制'
+    copyStatus.value = t('summary.copied')
     setTimeout(() => { copyStatus.value = '' }, 2000)
   } catch {
-    copyStatus.value = '复制失败'
+    copyStatus.value = t('summary.copyFailed')
   }
 }
 
@@ -124,7 +126,7 @@ function handleDownload() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `carebridge-summary-${triageStore.activeSession?.id}.txt`
+  a.download = `${locale.value === 'zh' ? 'carebridge-zh-summary' : 'carebridge-en-summary'}-${triageStore.activeSession?.id}.txt`
   a.click()
   URL.revokeObjectURL(url)
 }

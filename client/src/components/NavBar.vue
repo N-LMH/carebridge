@@ -6,18 +6,39 @@
         <div class="nav-titles">
           <span class="nav-name">CareBridge</span>
           <span class="nav-slash">/</span>
-          <span class="nav-zh">医路桥</span>
+          <span class="nav-zh">{{ isEnglish ? 'MedBridge' : '医路桥' }}</span>
         </div>
       </router-link>
       <div class="nav-badges">
-        <span class="badge badge--info">就医前辅助工具</span>
-        <span class="badge badge--warn">非诊断工具</span>
+        <span class="badge badge--info">{{ t('nav.badgeInfo') }}</span>
+        <span class="badge badge--warn">{{ t('nav.badgeWarn') }}</span>
+        <div class="locale-toggle" :aria-label="t('nav.languageToggle')">
+          <button
+            type="button"
+            class="locale-option"
+            :class="{ active: locale === 'zh' }"
+            @click="setLocale('zh')"
+          >
+            中
+          </button>
+          <button
+            type="button"
+            class="locale-option"
+            :class="{ active: locale === 'en' }"
+            @click="setLocale('en')"
+          >
+            EN
+          </button>
+        </div>
       </div>
     </div>
   </nav>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n'
+
+const { isEnglish, locale, setLocale, t } = useI18n()
 </script>
 
 <style scoped>
@@ -79,6 +100,7 @@
 .nav-badges {
   display: flex;
   gap: var(--space-2);
+  align-items: center;
 }
 
 .badge {
@@ -99,6 +121,30 @@
 .badge--warn {
   background: var(--c-warning-bg);
   color: var(--c-warning);
+}
+
+.locale-toggle {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.locale-option {
+  min-width: 42px;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--c-text-muted);
+  transition: all var(--transition-fast);
+}
+
+.locale-option.active {
+  background: var(--c-primary);
+  color: var(--c-text-inverse);
 }
 
 @media (max-width: 768px) {

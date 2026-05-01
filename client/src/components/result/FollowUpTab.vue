@@ -2,7 +2,7 @@
   <div class="followup-tab">
     <form @submit.prevent="handleSave" class="followup-form" novalidate>
       <label class="field">
-        <span class="field-label">当前体温 (°C)</span>
+        <span class="field-label">{{ t('followupLog.temperature') }}</span>
         <input
           v-model.number="form.temperatureC"
           class="field-input"
@@ -10,34 +10,34 @@
           step="0.1"
           min="30"
           max="45"
-          placeholder="例如：38.1"
+          :placeholder="t('followupLog.temperaturePlaceholder')"
         />
       </label>
       <label class="field">
-        <span class="field-label">症状变化</span>
+        <span class="field-label">{{ t('followupLog.symptomChange') }}</span>
         <input
           v-model="form.symptomChange"
           class="field-input"
           type="text"
-          placeholder="例如：咳嗽减轻"
+          :placeholder="t('followupLog.symptomChangePlaceholder')"
         />
       </label>
       <label class="field">
-        <span class="field-label">已服药物</span>
+        <span class="field-label">{{ t('followupLog.medicationTaken') }}</span>
         <input
           v-model="form.medicationTaken"
           class="field-input"
           type="text"
-          placeholder="例如：对乙酰氨基酚"
+          :placeholder="t('followupLog.medicationTakenPlaceholder')"
         />
       </label>
       <label class="field">
-        <span class="field-label">随访备注</span>
+        <span class="field-label">{{ t('followupLog.note') }}</span>
         <input
           v-model="form.note"
           class="field-input"
           type="text"
-          placeholder="例如：今晚可以休息"
+          :placeholder="t('followupLog.notePlaceholder')"
         />
       </label>
       <div class="form-actions">
@@ -45,9 +45,9 @@
           <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
             <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
           </svg>
-          保存随访
+          {{ t('followupLog.save') }}
         </button>
-        <button type="button" class="btn btn-ghost" @click="handleReload">刷新病例</button>
+        <button type="button" class="btn btn-ghost" @click="handleReload">{{ t('followupLog.reload') }}</button>
       </div>
       <p v-if="statusMessage" class="status-line" :class="statusClass">{{ statusMessage }}</p>
     </form>
@@ -57,26 +57,28 @@
         <li v-for="record in followUps" :key="record.id">
           <strong>{{ formatDate(record.createdAt) }}</strong>
           <p>
-            <template v-if="record.temperatureC != null">体温 {{ record.temperatureC }}°C · </template>
-            <template v-if="record.symptomChange">变化：{{ record.symptomChange }} · </template>
-            <template v-if="record.medicationTaken">用药：{{ record.medicationTaken }} · </template>
-            <template v-if="record.note">备注：{{ record.note }}</template>
+            <template v-if="record.temperatureC != null">{{ t('followupLog.tempPrefix') }} {{ record.temperatureC }}°C · </template>
+            <template v-if="record.symptomChange">{{ t('followupLog.changePrefix') }}：{{ record.symptomChange }} · </template>
+            <template v-if="record.medicationTaken">{{ t('followupLog.medicationPrefix') }}：{{ record.medicationTaken }} · </template>
+            <template v-if="record.note">{{ t('followupLog.notePrefix') }}：{{ record.note }}</template>
           </p>
         </li>
       </ol>
     </div>
     <div v-else class="empty-state">
-      暂无随访记录，观察患者后可在此保存
+      {{ t('followupLog.empty') }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import { useTriageStore } from '@/stores/triage'
 import type { FollowUpRecord } from '@/types'
 
 const triageStore = useTriageStore()
+const { locale, t } = useI18n()
 
 const saving = ref(false)
 const statusMessage = ref('')
@@ -98,7 +100,7 @@ const statusClass = computed(() => ({
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleString('zh-CN')
+  return new Date(dateStr).toLocaleString(locale.value === 'zh' ? 'zh-CN' : 'en-US')
 }
 
 async function handleSave() {
@@ -115,7 +117,7 @@ async function handleSave() {
       note: form.note
     })
 
-    statusMessage.value = '随访已保存'
+    statusMessage.value = t('followupLog.saved')
     statusType.value = 'success'
 
     // 重置表单
@@ -124,7 +126,7 @@ async function handleSave() {
     form.medicationTaken = ''
     form.note = ''
   } catch {
-    statusMessage.value = '保存失败，请重试'
+    statusMessage.value = t('followupLog.saveFailed')
     statusType.value = 'error'
   } finally {
     saving.value = false
@@ -137,10 +139,10 @@ async function handleReload() {
   try {
     const session = await triageStore.loadSession(triageStore.activeSession.id)
     triageStore.setActiveSession(session)
-    statusMessage.value = '已刷新'
+    statusMessage.value = t('followupLog.reloaded')
     statusType.value = 'success'
   } catch {
-    statusMessage.value = '刷新失败'
+    statusMessage.value = t('followupLog.reloadFailed')
     statusType.value = 'error'
   }
 }

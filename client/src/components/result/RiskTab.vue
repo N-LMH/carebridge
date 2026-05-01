@@ -10,7 +10,7 @@
 
     <div v-if="scoreBreakdown.details?.length" class="score-section">
       <div class="score-header">
-        <span class="score-title">风险评分</span>
+        <span class="score-title">{{ t('result.scoreTitle') }}</span>
         <span class="score-value">{{ totalScore }} / {{ maxScore }}</span>
       </div>
       <div class="score-track">
@@ -42,7 +42,7 @@
           <circle cx="12" cy="12" r="10"/>
           <path d="M12 16v-4M12 8h.01"/>
         </svg>
-        分级依据
+        {{ t('result.reasoningTitle') }}
       </h4>
       <ol class="result-list">
         <li v-for="(r, i) in assessment.reasoning" :key="i">{{ r }}</li>
@@ -55,7 +55,7 @@
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
           <path d="M22 4 12 14.01l-3-3"/>
         </svg>
-        即时建议
+        {{ t('result.stepsTitle') }}
       </h4>
       <ol class="result-list">
         <li v-for="(s, i) in assessment.immediateSteps" :key="i">{{ s }}</li>
@@ -66,10 +66,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import { useTriageStore } from '@/stores/triage'
 import type { RiskLevel, ScoreBreakdown, ScoreDetail } from '@/types'
 
 const triageStore = useTriageStore()
+const { t } = useI18n()
 
 const assessment = computed(() => triageStore.activeSession?.assessment)
 

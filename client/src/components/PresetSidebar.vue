@@ -1,6 +1,6 @@
 <template>
   <div class="sidebar-card">
-    <h3 class="sidebar-title">快速体验</h3>
+    <h3 class="sidebar-title">{{ t('sidebar.presetsTitle') }}</h3>
     <div class="preset-list">
       <article
         v-for="preset in presets"
@@ -12,13 +12,14 @@
           <strong>{{ preset.title }}</strong>
           <p>{{ preset.patientName }} · {{ preset.region }}</p>
         </div>
-        <span class="preset-cta">加载 →</span>
+        <span class="preset-cta">{{ t('sidebar.presetsLoad') }}</span>
       </article>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n'
 import type { DemoPreset } from '@/types'
 
 defineProps<{
@@ -28,6 +29,8 @@ defineProps<{
 const emit = defineEmits<{
   select: [preset: DemoPreset]
 }>()
+
+const { t } = useI18n()
 
 function handleSelect(preset: DemoPreset) {
   emit('select', preset)

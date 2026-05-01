@@ -8,7 +8,7 @@
       </div>
 
       <aside class="layout-sidebar">
-        <PresetSidebar :presets="demoPresets" @select="handlePresetSelect" />
+        <PresetSidebar :presets="localizedPresets" @select="handlePresetSelect" />
         <SessionSidebar
           :sessions="triageStore.recentSessions"
           @refresh="triageStore.loadRecentSessions"
@@ -21,7 +21,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
+import { useI18n } from '@/composables/useI18n'
+import { localizePreset } from '@/i18n/medical'
 import { useTriageStore, demoPresets } from '@/stores/triage'
 import IntakeCard from '@/components/IntakeCard.vue'
 import FollowUpCard from '@/components/FollowUpCard.vue'
@@ -32,6 +34,8 @@ import DisclaimerCard from '@/components/DisclaimerCard.vue'
 import type { DemoPreset } from '@/types'
 
 const triageStore = useTriageStore()
+const { locale } = useI18n()
+const localizedPresets = computed(() => demoPresets.map((preset) => localizePreset(preset, locale.value)))
 
 onMounted(() => {
   triageStore.loadRecentSessions()

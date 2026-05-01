@@ -8,13 +8,16 @@
       </svg>
     </div>
     <div class="disclaimer-body">
-      <strong>医疗免责声明</strong>
-      <p>本工具仅用于就医前辅助判断，不能替代医生面诊。如有疑问请立即就医。</p>
+      <strong>{{ t('disclaimer.title') }}</strong>
+      <p>{{ t('disclaimer.body') }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@/composables/useI18n'
+
+const { t } = useI18n()
 </script>
 
 <style scoped>

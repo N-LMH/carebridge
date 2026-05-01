@@ -2,7 +2,7 @@
   <div class="session-view">
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p>加载中...</p>
+      <p>{{ t('common.loading') }}</p>
     </div>
 
     <template v-else-if="session">
@@ -11,23 +11,24 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
-          返回
+          {{ t('common.back') }}
         </button>
-        <h1>{{ session.intake.patientName || '未署名' }} 的病例</h1>
+        <h1>{{ session.intake.patientName || t('common.unnamedPatient') }}{{ t('sessionView.titleSuffix') }}</h1>
       </div>
 
       <ResultCard />
     </template>
 
     <div v-else class="error-state">
-      <p>未找到该病例</p>
-      <button class="btn btn-primary" @click="goBack">返回首页</button>
+      <p>{{ t('sessionView.notFound') }}</p>
+      <button class="btn btn-primary" @click="goBack">{{ t('sessionView.backHome') }}</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import { useRouter, useRoute } from 'vue-router'
 import { useTriageStore } from '@/stores/triage'
 import ResultCard from '@/components/ResultCard.vue'
@@ -36,6 +37,7 @@ import type { Session } from '@/types'
 const router = useRouter()
 const route = useRoute()
 const triageStore = useTriageStore()
+const { t } = useI18n()
 
 const loading = ref(true)
 const session = ref<Session | null>(null)

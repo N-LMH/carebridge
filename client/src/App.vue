@@ -5,13 +5,21 @@
       <router-view />
     </main>
     <footer class="footer">
-      <p>CareBridge / 医路桥 — 医疗支持应始于患者到达医生之前</p>
+      <p>{{ t('app.footer') }}</p>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
+import { watchEffect } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import NavBar from '@/components/NavBar.vue'
+
+const { locale, t } = useI18n()
+
+watchEffect(() => {
+  document.documentElement.lang = locale.value
+})
 </script>
 
 <style scoped>

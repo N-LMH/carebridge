@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/services/api'
+import { useLocaleStore } from '@/stores/locale'
+import {
+  localizeFollowUpQuestions,
+  localizePreset,
+  localizeSession,
+  localizeSessionSummary
+} from '@/i18n/medical'
 import type {
   TriageRequest,
   TriageResponse,
@@ -12,18 +19,31 @@ import type {
 } from '@/types'
 
 export const useTriageStore = defineStore('triage', () => {
+  const localeStore = useLocaleStore()
+
   // State
   const currentStep = ref(1)
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const activeSession = ref<Session | null>(null)
-  const followUpQuestions = ref<FollowUpQuestion[]>([])
-  const recentSessions = ref<SessionSummary[]>([])
+  const rawActiveSession = ref<Session | null>(null)
+  const rawFollowUpQuestions = ref<FollowUpQuestion[]>([])
+  const rawRecentSessions = ref<SessionSummary[]>([])
   const draftPayload = ref<Partial<TriageRequest>>({})
 
   // Getters
-  const hasActiveSession = computed(() => activeSession.value !== null)
-  const needsFollowUp = computed(() => followUpQuestions.value.length > 0)
+  const activeSession = computed(() => {
+    return rawActiveSession.value
+      ? localizeSession(rawActiveSession.value, localeStore.locale)
+      : null
+  })
+  const followUpQuestions = computed(() => {
+    return localizeFollowUpQuestions(rawFollowUpQuestions.value, localeStore.locale)
+  })
+  const recentSessions = computed(() => {
+    return rawRecentSessions.value.map((session) => localizeSessionSummary(session, localeStore.locale))
+  })
+  const hasActiveSession = computed(() => rawActiveSession.value !== null)
+  const needsFollowUp = computed(() => rawFollowUpQuestions.value.length > 0)
 
   // Actions
   async function submitTriage(payload: TriageRequest): Promise<TriageResponse> {
@@ -34,11 +54,11 @@ export const useTriageStore = defineStore('triage', () => {
       const response = await api.submitTriage(payload)
 
       if (response.status === 'complete' && response.session) {
-        activeSession.value = response.session
-        followUpQuestions.value = []
+        rawActiveSession.value = response.session
+        rawFollowUpQuestions.value = []
         currentStep.value = 3
       } else if (response.status === 'needs_follow_up' && response.questions) {
-        followUpQuestions.value = response.questions
+        rawFollowUpQuestions.value = response.questions
         draftPayload.value = payload
         currentStep.value = 2
       }
@@ -61,9 +81,9 @@ export const useTriageStore = defineStore('triage', () => {
   async function loadRecentSessions(limit = 8) {
     try {
       const response = await api.getSessions(limit)
-      recentSessions.value = response.sessions
+      rawRecentSessions.value = response.sessions
     } catch {
-      recentSessions.value = []
+      rawRecentSessions.value = []
     }
   }
 
@@ -76,7 +96,7 @@ export const useTriageStore = defineStore('triage', () => {
     try {
       const response = await api.addFollowUp(sessionId, record)
       if (response.session) {
-        activeSession.value = response.session
+        rawActiveSession.value = response.session
       }
       return response.session
     } catch (err) {
@@ -90,25 +110,30 @@ export const useTriageStore = defineStore('triage', () => {
     currentStep.value = step
   }
 
+  function clearFollowUpQuestions() {
+    rawFollowUpQuestions.value = []
+  }
+
   function setActiveSession(session: Session | null) {
-    activeSession.value = session
+    rawActiveSession.value = session
   }
 
   function loadPreset(preset: DemoPreset) {
+    const localizedPreset = localizePreset(preset, localeStore.locale)
     draftPayload.value = {
-      patientName: preset.patientName,
-      age: preset.age,
-      gender: preset.gender,
-      region: preset.region,
-      symptoms: preset.symptoms.split(/[、,]/).map((item) => item.trim()).filter(Boolean),
-      symptomNotes: preset.symptomNotes,
-      symptomDays: preset.symptomDays,
-      severity: preset.severity,
-      chronicConditions: preset.chronicConditions
-        ? preset.chronicConditions.split(/[、,]/).map((item) => item.trim()).filter(Boolean)
+      patientName: localizedPreset.patientName,
+      age: localizedPreset.age,
+      gender: localizedPreset.gender,
+      region: localizedPreset.region,
+      symptoms: localizedPreset.symptoms.split(/[、,]/).map((item) => item.trim()).filter(Boolean),
+      symptomNotes: localizedPreset.symptomNotes,
+      symptomDays: localizedPreset.symptomDays,
+      severity: localizedPreset.severity,
+      chronicConditions: localizedPreset.chronicConditions
+        ? localizedPreset.chronicConditions.split(/[、,]/).map((item) => item.trim()).filter(Boolean)
         : [],
-      medications: preset.medications,
-      allergies: preset.allergies
+      medications: localizedPreset.medications,
+      allergies: localizedPreset.allergies
     }
     error.value = null
   }
@@ -117,8 +142,8 @@ export const useTriageStore = defineStore('triage', () => {
     currentStep.value = 1
     loading.value = false
     error.value = null
-    activeSession.value = null
-    followUpQuestions.value = []
+    rawActiveSession.value = null
+    rawFollowUpQuestions.value = []
     draftPayload.value = {}
   }
 
@@ -141,6 +166,7 @@ export const useTriageStore = defineStore('triage', () => {
     loadSession,
     addFollowUp,
     setCurrentStep,
+    clearFollowUpQuestions,
     setActiveSession,
     loadPreset,
     reset
