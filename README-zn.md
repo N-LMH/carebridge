@@ -154,6 +154,8 @@ npm run build:pdf
 - [详细中文说明文档](./doc/说明文档-中文.md)
 - [产品设计文档](./doc/产品设计.md)
 - [提交 PDF](./doc/CareBridge-Hackathon-Deck.pdf)
+- [开源许可证](./LICENSE)
+- [安全说明](./SECURITY.md)
 
 ## 黑客松展示重点
 

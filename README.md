@@ -154,6 +154,8 @@ npm run build:pdf
 - [Detailed English Documentation](./doc/README-English.md)
 - [Product Design Document](./doc/产品设计.md)
 - [Submission PDF](./doc/CareBridge-Hackathon-Deck.pdf)
+- [License](./LICENSE)
+- [Security Policy](./SECURITY.md)
 
 ## Hackathon Strengths
 
