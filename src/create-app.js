@@ -246,12 +246,20 @@ export function createApp({
   });
 
   // Doctor API endpoints
+  app.get("/api/doctor/dashboard", requireAuth("doctor"), (_request, response) => {
+    const dashboard = storage.getDoctorDashboard();
+    return response.json(dashboard);
+  });
+
   app.get("/api/doctor/sessions", requireAuth("doctor"), (request, response) => {
     const q = request.query.q;
     const riskLevel = request.query.riskLevel;
+    const doctorStatus = request.query.doctorStatus;
+    const conversationState = request.query.conversationState;
+    const priorityLevel = request.query.priorityLevel;
     const sort = request.query.sort;
 
-    const sessions = storage.getDoctorSessions({ q, riskLevel, sort });
+    const sessions = storage.getDoctorSessions({ q, riskLevel, doctorStatus, conversationState, priorityLevel, sort });
 
     return response.json({
       sessions: sessions.map((session) => ({
@@ -267,15 +275,27 @@ export function createApp({
         suggestedDepartment: session.assessment.suggestedDepartment,
         followUpCount: session.followUps?.length || 0,
         redFlags: session.assessment.redFlags || [],
-        adminStatus: session.adminStatus || 'new',
+        doctorStatus: session.doctorStatus || 'new',
+        conversationState: session.conversationState || 'none',
+        priorityLevel: session.priorityLevel || 'normal',
         lastMessage: session.lastMessage,
-        messageCount: session.messageCount
+        messageCount: session.messageCount,
+        unreadCount: session.unreadCount || 0
       }))
     });
   });
 
-  app.get("/api/doctor/sessions/:sessionId", requireAuth("doctor"), (request, response) => {
-    const session = storage.getDoctorSessionDetail(request.params.sessionId);
+  app.get("/api/doctor/sessions/:sessionId", requireAuth("doctor"), async (request, response) => {
+    const session = await storage.getDoctorSessionDetail(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    return response.json({ session });
+  });
+
+  app.patch("/api/doctor/sessions/:sessionId", requireAuth("doctor"), async (request, response) => {
+    const { doctorStatus, doctorNote, priorityLevel } = request.body;
+    const session = await storage.updateDoctorFields(request.params.sessionId, { doctorStatus, doctorNote, priorityLevel });
     if (!session) {
       return response.status(404).json({ error: "Session not found" });
     }

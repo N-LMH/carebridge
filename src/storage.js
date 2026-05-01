@@ -72,14 +72,25 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
 
   // Migration: add columns if they don't exist (for existing databases)
   const columns = db.prepare("PRAGMA table_info(sessions)").all().map(c => c.name);
-  if (!columns.includes('admin_note')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN admin_note TEXT NOT NULL DEFAULT ''");
-  }
-  if (!columns.includes('admin_status')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN admin_status TEXT NOT NULL DEFAULT 'new'");
-  }
-  if (!columns.includes('tags')) {
-    db.exec("ALTER TABLE sessions ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'");
+
+  const doctorColumns = [
+    { name: 'doctor_status', def: "ALTER TABLE sessions ADD COLUMN doctor_status TEXT NOT NULL DEFAULT 'new'" },
+    { name: 'doctor_note', def: "ALTER TABLE sessions ADD COLUMN doctor_note TEXT NOT NULL DEFAULT ''" },
+    { name: 'conversation_state', def: "ALTER TABLE sessions ADD COLUMN conversation_state TEXT NOT NULL DEFAULT 'none'" },
+    { name: 'last_patient_message_at', def: "ALTER TABLE sessions ADD COLUMN last_patient_message_at TEXT" },
+    { name: 'last_doctor_message_at', def: "ALTER TABLE sessions ADD COLUMN last_doctor_message_at TEXT" },
+    { name: 'reviewed_at', def: "ALTER TABLE sessions ADD COLUMN reviewed_at TEXT" },
+    { name: 'resolved_at', def: "ALTER TABLE sessions ADD COLUMN resolved_at TEXT" },
+    { name: 'priority_level', def: "ALTER TABLE sessions ADD COLUMN priority_level TEXT NOT NULL DEFAULT 'normal'" },
+    { name: 'admin_note', def: "ALTER TABLE sessions ADD COLUMN admin_note TEXT NOT NULL DEFAULT ''" },
+    { name: 'admin_status', def: "ALTER TABLE sessions ADD COLUMN admin_status TEXT NOT NULL DEFAULT 'new'" },
+    { name: 'tags', def: "ALTER TABLE sessions ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'" }
+  ];
+
+  for (const col of doctorColumns) {
+    if (!columns.includes(col.name)) {
+      db.exec(col.def);
+    }
   }
 
   // Users table for doctor/admin authentication
@@ -103,9 +114,24 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       sender_id TEXT,
       content TEXT NOT NULL,
       created_at TEXT NOT NULL,
+      message_kind TEXT NOT NULL DEFAULT 'text',
+      is_read_by_doctor INTEGER NOT NULL DEFAULT 0,
+      is_read_by_patient INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (session_id) REFERENCES sessions(id)
     );
   `);
+
+  // Migration: add message columns if they don't exist
+  const msgColumns = db.prepare("PRAGMA table_info(messages)").all().map(c => c.name);
+  if (!msgColumns.includes('message_kind')) {
+    db.exec("ALTER TABLE messages ADD COLUMN message_kind TEXT NOT NULL DEFAULT 'text'");
+  }
+  if (!msgColumns.includes('is_read_by_doctor')) {
+    db.exec("ALTER TABLE messages ADD COLUMN is_read_by_doctor INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!msgColumns.includes('is_read_by_patient')) {
+    db.exec("ALTER TABLE messages ADD COLUMN is_read_by_patient INTEGER NOT NULL DEFAULT 0");
+  }
 
   // Seed default users if none exist
   const userCount = db.prepare("SELECT COUNT(*) as count FROM users").get();
@@ -133,8 +159,8 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
   }
 
   const insertSession = db.prepare(`
-    INSERT OR IGNORE INTO sessions (id, created_at, patient_data, assessment_data, summary_data, follow_ups, admin_note, admin_status, tags)
-    VALUES (@id, @createdAt, @patientData, @assessmentData, @summaryData, @followUps, @adminNote, @adminStatus, @tags)
+    INSERT OR IGNORE INTO sessions (id, created_at, patient_data, assessment_data, summary_data, follow_ups, admin_note, admin_status, tags, doctor_status, doctor_note, conversation_state, priority_level)
+    VALUES (@id, @createdAt, @patientData, @assessmentData, @summaryData, @followUps, @adminNote, @adminStatus, @tags, @doctorStatus, @doctorNote, @conversationState, @priorityLevel)
   `);
 
   const selectSession = db.prepare(`SELECT * FROM sessions WHERE id = ?`);
@@ -162,7 +188,15 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       followUps: JSON.parse(row.follow_ups),
       adminNote: row.admin_note || '',
       adminStatus: row.admin_status || 'new',
-      tags: JSON.parse(row.tags || '[]')
+      tags: JSON.parse(row.tags || '[]'),
+      doctorStatus: row.doctor_status || 'new',
+      doctorNote: row.doctor_note || '',
+      conversationState: row.conversation_state || 'none',
+      lastPatientMessageAt: row.last_patient_message_at || null,
+      lastDoctorMessageAt: row.last_doctor_message_at || null,
+      reviewedAt: row.reviewed_at || null,
+      resolvedAt: row.resolved_at || null,
+      priorityLevel: row.priority_level || 'normal'
     };
   }
 
@@ -176,28 +210,72 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       followUps: JSON.stringify(session.followUps || []),
       adminNote: session.adminNote || '',
       adminStatus: session.adminStatus || 'new',
-      tags: JSON.stringify(session.tags || [])
+      tags: JSON.stringify(session.tags || []),
+      doctorStatus: session.doctorStatus || 'new',
+      doctorNote: session.doctorNote || '',
+      conversationState: session.conversationState || 'none',
+      priorityLevel: session.priorityLevel || 'normal'
     };
+  }
+
+  const RISK_ORDER = { 'Level 1': 1, 'Level 2': 2, 'Level 3': 3, 'Level 4': 4 };
+  const PRIORITY_ORDER = { urgent: 1, high: 2, normal: 3, low: 4 };
+
+  function matchesQuery(session, query) {
+    const name = (session.intake.patientName || "").toLowerCase();
+    const region = (session.intake.region || "").toLowerCase();
+    const symptoms = (session.assessment.symptoms || []).join(" ").toLowerCase();
+    return name.includes(query) || region.includes(query) || symptoms.includes(query);
+  }
+
+  function enrichWithMessages(sessions) {
+    return sessions.map(session => {
+      const msgs = db.prepare("SELECT * FROM messages WHERE session_id = ? ORDER BY created_at DESC LIMIT 1").all(session.id);
+      const msgCount = db.prepare("SELECT COUNT(*) as count FROM messages WHERE session_id = ?").get(session.id);
+      const unreadByDoctor = db.prepare("SELECT COUNT(*) as count FROM messages WHERE session_id = ? AND is_read_by_doctor = 0 AND sender_type != 'doctor'").get(session.id);
+      return {
+        ...session,
+        lastMessage: msgs.length > 0 ? { content: msgs[0].content, createdAt: msgs[0].created_at, senderType: msgs[0].sender_type } : null,
+        messageCount: msgCount.count,
+        unreadCount: unreadByDoctor.count
+      };
+    });
   }
 
   function migrateLegacySessionsIfNeeded() {
     const existing = countSessions.get();
-    if (existing.count > 0) {
-      return;
-    }
-
-    const legacySessions = safeReadLegacySessions(legacyJsonPath);
-    if (legacySessions.length === 0) {
-      return;
-    }
-
-    const insertMany = db.transaction((sessions) => {
-      for (const session of sessions) {
-        insertSession.run(sessionToRow(session));
+    if (existing.count === 0) {
+      const legacySessions = safeReadLegacySessions(legacyJsonPath);
+      if (legacySessions.length > 0) {
+        const insertMany = db.transaction((sessions) => {
+          for (const session of sessions) {
+            insertSession.run(sessionToRow(session));
+          }
+        });
+        insertMany(legacySessions);
       }
-    });
+    }
 
-    insertMany(legacySessions);
+    // Verify columns exist after migration
+    const cols = db.prepare("PRAGMA table_info(sessions)").all().map(c => c.name);
+    if (cols.includes('doctor_status')) {
+      try { db.prepare("UPDATE sessions SET doctor_status = 'new' WHERE doctor_status IS NULL OR doctor_status = ''").run(); } catch {}
+    }
+    if (cols.includes('doctor_note')) {
+      try { db.prepare("UPDATE sessions SET doctor_note = '' WHERE doctor_note IS NULL").run(); } catch {}
+    }
+    if (cols.includes('conversation_state')) {
+      try { db.prepare("UPDATE sessions SET conversation_state = 'none' WHERE conversation_state IS NULL OR conversation_state = ''").run(); } catch {}
+    }
+    if (cols.includes('priority_level')) {
+      try { db.prepare("UPDATE sessions SET priority_level = 'normal' WHERE priority_level IS NULL OR priority_level = ''").run(); } catch {}
+    }
+    if (cols.includes('admin_status')) {
+      try { db.prepare("UPDATE sessions SET admin_status = 'new' WHERE admin_status IS NULL OR admin_status = ''").run(); } catch {}
+    }
+    if (cols.includes('admin_note')) {
+      try { db.prepare("UPDATE sessions SET admin_note = '' WHERE admin_note IS NULL").run(); } catch {}
+    }
   }
 
   migrateLegacySessionsIfNeeded();
@@ -231,16 +309,9 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
     },
 
     async searchSessions(query) {
-      const allRows = selectAllSessions.all();
       const q = String(query || "").toLowerCase();
-      return allRows
-        .map(rowToSession)
-        .filter((session) => {
-          const name = (session.intake.patientName || "").toLowerCase();
-          const region = (session.intake.region || "").toLowerCase();
-          const symptoms = (session.assessment.symptoms || []).join(" ").toLowerCase();
-          return name.includes(q) || region.includes(q) || symptoms.includes(q);
-        });
+      if (!q) return selectAllSessions.all().map(rowToSession);
+      return selectAllSessions.all().map(rowToSession).filter(s => matchesQuery(s, q));
     },
 
     async getSessionCount() {
@@ -266,6 +337,47 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       if (tags !== undefined) {
         updates.push('tags = @tags');
         params.tags = JSON.stringify(tags);
+      }
+
+      if (updates.length === 0) return rowToSession(row);
+
+      params.id = sessionId;
+      db.prepare(`UPDATE sessions SET ${updates.join(', ')} WHERE id = @id`).run(params);
+
+      const updated = selectSession.get(sessionId);
+      return rowToSession(updated);
+    },
+
+    async updateDoctorFields(sessionId, fields) {
+      const row = selectSession.get(sessionId);
+      if (!row) return null;
+
+      const updates = [];
+      const params = {};
+
+      if (fields.doctorStatus !== undefined) {
+        updates.push('doctor_status = @doctorStatus');
+        params.doctorStatus = String(fields.doctorStatus);
+        if (fields.doctorStatus === 'under_review' && !row.reviewed_at) {
+          updates.push('reviewed_at = @reviewedAt');
+          params.reviewedAt = new Date().toISOString();
+        }
+        if (fields.doctorStatus === 'resolved') {
+          updates.push('resolved_at = @resolvedAt');
+          params.resolvedAt = new Date().toISOString();
+        }
+      }
+      if (fields.doctorNote !== undefined) {
+        updates.push('doctor_note = @doctorNote');
+        params.doctorNote = String(fields.doctorNote);
+      }
+      if (fields.priorityLevel !== undefined) {
+        updates.push('priority_level = @priorityLevel');
+        params.priorityLevel = String(fields.priorityLevel);
+      }
+      if (fields.conversationState !== undefined) {
+        updates.push('conversation_state = @conversationState');
+        params.conversationState = String(fields.conversationState);
       }
 
       if (updates.length === 0) return rowToSession(row);
@@ -328,8 +440,7 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       }
 
       if (sort === 'risk') {
-        const order = { 'Level 1': 1, 'Level 2': 2, 'Level 3': 3, 'Level 4': 4 };
-        sessions.sort((a, b) => (order[a.assessment.riskLevel] || 5) - (order[b.assessment.riskLevel] || 5));
+        sessions.sort((a, b) => (RISK_ORDER[a.assessment.riskLevel] || 5) - (RISK_ORDER[b.assessment.riskLevel] || 5));
       } else if (sort === 'followups') {
         sessions.sort((a, b) => b.followUps.length - a.followUps.length);
       }
@@ -370,56 +481,87 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
         senderType: row.sender_type,
         senderId: row.sender_id,
         content: row.content,
-        createdAt: row.created_at
+        createdAt: row.created_at,
+        messageKind: row.message_kind || 'text',
+        isReadByDoctor: !!row.is_read_by_doctor,
+        isReadByPatient: !!row.is_read_by_patient
       }));
     },
 
-    addMessage(sessionId, senderType, senderId, content) {
+    addMessage(sessionId, senderType, senderId, content, kind = 'text') {
       const id = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const createdAt = new Date().toISOString();
-      db.prepare("INSERT INTO messages (id, session_id, sender_type, sender_id, content, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-        .run(id, sessionId, senderType, senderId, content, createdAt);
-      return { id, sessionId, senderType, senderId, content, createdAt };
+      const isReadByDoctor = senderType === 'doctor' ? 1 : 0;
+      const isReadByPatient = senderType === 'patient' ? 1 : 0;
+      db.prepare("INSERT INTO messages (id, session_id, sender_type, sender_id, content, created_at, message_kind, is_read_by_doctor, is_read_by_patient) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(id, sessionId, senderType, senderId, content, createdAt, kind, isReadByDoctor, isReadByPatient);
+
+      // Update session timestamps and conversation state
+      const now = new Date().toISOString();
+      if (senderType === 'doctor') {
+        db.prepare("UPDATE sessions SET last_doctor_message_at = ?, conversation_state = 'waiting_patient' WHERE id = ?")
+          .run(now, sessionId);
+      } else if (senderType === 'patient') {
+        db.prepare("UPDATE sessions SET last_patient_message_at = ?, conversation_state = 'waiting_doctor' WHERE id = ?")
+          .run(now, sessionId);
+      }
+
+      return { id, sessionId, senderType, senderId, content, createdAt, messageKind: kind, isReadByDoctor: !!isReadByDoctor, isReadByPatient: !!isReadByPatient };
     },
 
-    getDoctorSessions({ q, riskLevel, sort } = {}) {
+    markMessagesRead(sessionId, readerType) {
+      const col = readerType === 'doctor' ? 'is_read_by_doctor' : 'is_read_by_patient';
+      db.prepare(`UPDATE messages SET ${col} = 1 WHERE session_id = ? AND sender_type != ?`)
+        .run(sessionId, readerType);
+    },
+
+    getDoctorDashboard() {
+      const sessions = selectAllSessions.all().map(rowToSession);
+      const isHighRisk = s => s.assessment.riskLevel === 'Level 1' || s.assessment.riskLevel === 'Level 2';
+      const isActive = s => s.doctorStatus !== 'resolved';
+
+      const totalActive = sessions.filter(isActive).length;
+      const highRisk = sessions.filter(s => isHighRisk(s) && isActive(s)).length;
+      const waitingDoctorReply = sessions.filter(s => s.conversationState === 'waiting_doctor').length;
+      const waitingPatientReply = sessions.filter(s => s.conversationState === 'waiting_patient').length;
+      const resolved = sessions.length - totalActive;
+
+      const enriched = enrichWithMessages(sessions);
+      const urgent = enriched.filter(s => (isHighRisk(s) || s.priorityLevel === 'high' || s.priorityLevel === 'urgent') && isActive(s));
+      const needsReply = enriched.filter(s => s.conversationState === 'waiting_doctor');
+      const recent = enriched.slice(0, 10);
+
+      return {
+        stats: { totalActive, highRisk, waitingDoctorReply, waitingPatientReply, resolved },
+        queues: { urgent, needsReply, recent }
+      };
+    },
+
+    getDoctorSessions({ q, riskLevel, doctorStatus, conversationState, priorityLevel, sort } = {}) {
       let sessions = selectAllSessions.all().map(rowToSession);
 
-      if (q && String(q).trim()) {
-        const query = String(q).trim().toLowerCase();
-        sessions = sessions.filter(s => {
-          const name = (s.intake.patientName || "").toLowerCase();
-          const region = (s.intake.region || "").toLowerCase();
-          const symptoms = (s.assessment.symptoms || []).join(" ").toLowerCase();
-          return name.includes(query) || region.includes(query) || symptoms.includes(query);
-        });
-      }
-
-      if (riskLevel) {
-        sessions = sessions.filter(s => s.assessment.riskLevel === riskLevel);
-      }
+      const query = q && String(q).trim() ? String(q).trim().toLowerCase() : '';
+      if (query) sessions = sessions.filter(s => matchesQuery(s, query));
+      if (riskLevel) sessions = sessions.filter(s => s.assessment.riskLevel === riskLevel);
+      if (doctorStatus) sessions = sessions.filter(s => s.doctorStatus === doctorStatus);
+      if (conversationState) sessions = sessions.filter(s => s.conversationState === conversationState);
+      if (priorityLevel) sessions = sessions.filter(s => s.priorityLevel === priorityLevel);
 
       if (sort === 'risk') {
-        const order = { 'Level 1': 1, 'Level 2': 2, 'Level 3': 3, 'Level 4': 4 };
-        sessions.sort((a, b) => (order[a.assessment.riskLevel] || 5) - (order[b.assessment.riskLevel] || 5));
+        sessions.sort((a, b) => (RISK_ORDER[a.assessment.riskLevel] || 5) - (RISK_ORDER[b.assessment.riskLevel] || 5));
+      } else if (sort === 'priority') {
+        sessions.sort((a, b) => (PRIORITY_ORDER[a.priorityLevel] || 5) - (PRIORITY_ORDER[b.priorityLevel] || 5));
       }
 
-      // Add last message info and unread count
-      return sessions.map(session => {
-        const msgs = db.prepare("SELECT * FROM messages WHERE session_id = ? ORDER BY created_at DESC LIMIT 1").all(session.id);
-        const msgCount = db.prepare("SELECT COUNT(*) as count FROM messages WHERE session_id = ?").get(session.id);
-        return {
-          ...session,
-          lastMessage: msgs.length > 0 ? { content: msgs[0].content, createdAt: msgs[0].created_at, senderType: msgs[0].sender_type } : null,
-          messageCount: msgCount.count
-        };
-      });
+      return enrichWithMessages(sessions);
     },
 
-    getDoctorSessionDetail(sessionId) {
-      const session = this.getSession(sessionId);
+    async getDoctorSessionDetail(sessionId) {
+      const session = await this.getSession(sessionId);
       if (!session) return null;
       const messages = this.getMessages(sessionId);
+      // Mark patient messages as read by doctor
+      this.markMessagesRead(sessionId, 'doctor');
       return { ...session, messages };
     }
   };

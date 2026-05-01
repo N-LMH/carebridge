@@ -9,7 +9,8 @@ import type {
   User,
   Message,
   DoctorSessionSummary,
-  DoctorSession
+  DoctorSession,
+  DoctorDashboardResponse
 } from '@/types'
 
 const API_BASE = '/api'
@@ -124,6 +125,19 @@ export const api = {
       if (v !== undefined && v !== '') qs.set(k, String(v))
     }
     return request<SessionListResponse>(`/admin/sessions?${qs.toString()}`)
+  },
+
+  // Doctor: 获取工作台概览
+  getDoctorDashboard() {
+    return request<DoctorDashboardResponse>('/doctor/dashboard')
+  },
+
+  // Doctor: 更新会话
+  patchDoctorSession(sessionId: string, data: { doctorStatus?: string; doctorNote?: string; priorityLevel?: string }) {
+    return request<{ session: DoctorSession }>(`/doctor/sessions/${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
   },
 
   // Doctor: 获取会话列表

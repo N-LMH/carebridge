@@ -504,6 +504,43 @@ export function localizeAdminSessionSummary(summary: AdminSessionSummary, locale
   }
 }
 
+const doctorStatusLabels: Record<string, LocalizedText> = {
+  'new': { zh: '新病例', en: 'New' },
+  'under_review': { zh: '审阅中', en: 'Under Review' },
+  'awaiting_patient_reply': { zh: '等待患者', en: 'Awaiting Patient' },
+  'follow_up_recommended': { zh: '建议随访', en: 'Follow-up Recommended' },
+  'ready_for_visit': { zh: '可就诊', en: 'Ready for Visit' },
+  'resolved': { zh: '已处理', en: 'Resolved' },
+  'escalated': { zh: '已转诊', en: 'Escalated' }
+}
+
+const conversationStateLabels: Record<string, LocalizedText> = {
+  'none': { zh: '无对话', en: 'No Conversation' },
+  'waiting_doctor': { zh: '等待医生', en: 'Waiting Doctor' },
+  'waiting_patient': { zh: '等待患者', en: 'Waiting Patient' },
+  'active': { zh: '进行中', en: 'Active' },
+  'closed': { zh: '已结束', en: 'Closed' }
+}
+
+const priorityLabels: Record<string, LocalizedText> = {
+  'low': { zh: '低', en: 'Low' },
+  'normal': { zh: '普通', en: 'Normal' },
+  'high': { zh: '高', en: 'High' },
+  'urgent': { zh: '紧急', en: 'Urgent' }
+}
+
+export function localizeDoctorStatus(status: string, locale: Locale): string {
+  return doctorStatusLabels[status]?.[locale] || status
+}
+
+export function localizeConversationState(state: string, locale: Locale): string {
+  return conversationStateLabels[state]?.[locale] || state
+}
+
+export function localizePriority(priority: string, locale: Locale): string {
+  return priorityLabels[priority]?.[locale] || priority
+}
+
 export function localizeDoctorSessionSummary(summary: DoctorSessionSummary, locale: Locale): DoctorSessionSummary {
   const localized = localizeSessionSummary(summary, locale)
 

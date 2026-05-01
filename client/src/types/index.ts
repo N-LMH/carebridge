@@ -125,6 +125,15 @@ export interface FollowUpRecord {
 // Admin status types
 export type AdminStatus = 'new' | 'reviewed' | 'urgent' | 'resolved' | 'archived'
 
+// Doctor workflow status types
+export type DoctorStatus = 'new' | 'under_review' | 'awaiting_patient_reply' | 'follow_up_recommended' | 'ready_for_visit' | 'resolved' | 'escalated'
+
+// Conversation state types
+export type ConversationState = 'none' | 'waiting_doctor' | 'waiting_patient' | 'active' | 'closed'
+
+// Priority level types
+export type PriorityLevel = 'low' | 'normal' | 'high' | 'urgent'
+
 // 会话
 export interface Session {
   id: string
@@ -136,6 +145,14 @@ export interface Session {
   adminNote?: string
   adminStatus?: AdminStatus
   tags?: string[]
+  doctorStatus?: DoctorStatus
+  doctorNote?: string
+  conversationState?: ConversationState
+  lastPatientMessageAt?: string | null
+  lastDoctorMessageAt?: string | null
+  reviewedAt?: string | null
+  resolvedAt?: string | null
+  priorityLevel?: PriorityLevel
 }
 
 // API 响应
@@ -225,6 +242,9 @@ export interface Message {
   senderId: string | null
   content: string
   createdAt: string
+  messageKind?: string
+  isReadByDoctor?: boolean
+  isReadByPatient?: boolean
 }
 
 // Doctor session summary
@@ -232,11 +252,34 @@ export interface DoctorSessionSummary extends SessionSummary {
   age: number | null
   gender: Gender
   redFlags: string[]
-  adminStatus: AdminStatus
+  doctorStatus: DoctorStatus
+  conversationState: ConversationState
+  priorityLevel: PriorityLevel
   lastMessage: { content: string; createdAt: string; senderType: SenderType } | null
   messageCount: number
+  unreadCount: number
 }
 
 export interface DoctorSession extends Session {
   messages: Message[]
+}
+
+// Doctor dashboard
+export interface DoctorDashboardStats {
+  totalActive: number
+  highRisk: number
+  waitingDoctorReply: number
+  waitingPatientReply: number
+  resolved: number
+}
+
+export interface DoctorDashboardQueues {
+  urgent: DoctorSessionSummary[]
+  needsReply: DoctorSessionSummary[]
+  recent: DoctorSessionSummary[]
+}
+
+export interface DoctorDashboardResponse {
+  stats: DoctorDashboardStats
+  queues: DoctorDashboardQueues
 }

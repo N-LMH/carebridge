@@ -17,6 +17,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+carebridge-server*.log
+prd.json
+progress.txt
 
 # System
 .DS_Store

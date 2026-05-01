@@ -792,4 +792,268 @@ describe("CareBridge API", () => {
       await cleanupDb(filePath);
     }
   });
+
+  it("doctor dashboard returns stats and queues", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "doctor", "doctor123");
+
+      // Create a session
+      await client.post("/api/triage").send({
+        patientName: "Dashboard Test",
+        age: 30,
+        gender: "female",
+        region: "city",
+        symptoms: ["fever"],
+        symptomNotes: "fever",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.5,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const response = await client
+        .get("/api/doctor/dashboard")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.stats).toBeDefined();
+      expect(response.body.stats.totalActive).toBe(1);
+      expect(response.body.stats.highRisk).toBe(0);
+      expect(response.body.queues).toBeDefined();
+      expect(response.body.queues.recent).toHaveLength(1);
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("doctor can update session status and note", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "doctor", "doctor123");
+
+      const triage = await client.post("/api/triage").send({
+        patientName: "Status Test",
+        age: 40,
+        gender: "male",
+        region: "city",
+        symptoms: ["headache"],
+        symptomNotes: "mild headache",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.0,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const sessionId = triage.body.session.id;
+
+      // Update doctor status
+      const statusRes = await client
+        .patch(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ doctorStatus: "under_review" });
+
+      expect(statusRes.status).toBe(200);
+      expect(statusRes.body.session.doctorStatus).toBe("under_review");
+      expect(statusRes.body.session.reviewedAt).toBeTruthy();
+
+      // Update doctor note
+      const noteRes = await client
+        .patch(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ doctorNote: "Patient has mild symptoms, monitor for 24h" });
+
+      expect(noteRes.status).toBe(200);
+      expect(noteRes.body.session.doctorNote).toBe("Patient has mild symptoms, monitor for 24h");
+
+      // Update priority
+      const priorityRes = await client
+        .patch(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ priorityLevel: "high" });
+
+      expect(priorityRes.status).toBe(200);
+      expect(priorityRes.body.session.priorityLevel).toBe("high");
+
+      // Verify persistence via detail endpoint
+      const detail = await client
+        .get(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(detail.body.session.doctorStatus).toBe("under_review");
+      expect(detail.body.session.doctorNote).toBe("Patient has mild symptoms, monitor for 24h");
+      expect(detail.body.session.priorityLevel).toBe("high");
+      expect(detail.body.session.reviewedAt).toBeTruthy();
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("conversation state updates on message send", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "doctor", "doctor123");
+
+      const triage = await client.post("/api/triage").send({
+        patientName: "Conv State Test",
+        age: 25,
+        gender: "female",
+        region: "city",
+        symptoms: ["sore throat"],
+        symptomNotes: "sore throat",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.0,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const sessionId = triage.body.session.id;
+
+      // Initial state should be 'none'
+      const initial = await client
+        .get(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(initial.body.session.conversationState).toBe("none");
+
+      // Patient sends message -> waiting_doctor
+      await client
+        .post(`/api/sessions/${sessionId}/messages`)
+        .send({ content: "My throat hurts" });
+
+      const afterPatient = await client
+        .get(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(afterPatient.body.session.conversationState).toBe("waiting_doctor");
+      expect(afterPatient.body.session.lastPatientMessageAt).toBeTruthy();
+
+      // Doctor sends message -> waiting_patient
+      await client
+        .post(`/api/doctor/sessions/${sessionId}/messages`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ content: "How long has this been going on?" });
+
+      const afterDoctor = await client
+        .get(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(afterDoctor.body.session.conversationState).toBe("waiting_patient");
+      expect(afterDoctor.body.session.lastDoctorMessageAt).toBeTruthy();
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("doctor session list supports filters", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "doctor", "doctor123");
+
+      // Create two sessions
+      const s1 = await client.post("/api/triage").send({
+        patientName: "Filter A",
+        age: 30,
+        gender: "male",
+        region: "city",
+        symptoms: ["fever"],
+        symptomNotes: "fever",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.5,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const s2 = await client.post("/api/triage").send({
+        patientName: "Filter B",
+        age: 50,
+        gender: "female",
+        region: "village",
+        symptoms: ["fever", "cough", "chest tightness"],
+        symptomNotes: "severe",
+        symptomDays: 3,
+        severity: "severe",
+        breathingDifficulty: "severe",
+        symptomsWorsening: true,
+        maxTemperatureC: 39.5,
+        chillsOrSweats: "both",
+        chronicConditions: ["hypertension"],
+        medications: "none",
+        allergies: "none",
+        chestPain: true,
+        coughType: "productive",
+        nightSymptoms: "yes",
+        painRadiation: "none",
+        activityRelation: "both",
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      // Update one to under_review
+      await client
+        .patch(`/api/doctor/sessions/${s2.body.session.id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ doctorStatus: "under_review" });
+
+      // Filter by doctorStatus
+      const filtered = await client
+        .get("/api/doctor/sessions?doctorStatus=under_review")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(filtered.status).toBe(200);
+      expect(filtered.body.sessions).toHaveLength(1);
+      expect(filtered.body.sessions[0].patientName).toBe("Filter B");
+
+      // Filter by riskLevel
+      const riskFiltered = await client
+        .get("/api/doctor/sessions?riskLevel=Level 1")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(riskFiltered.status).toBe(200);
+      expect(riskFiltered.body.sessions.length).toBeGreaterThanOrEqual(1);
+      riskFiltered.body.sessions.forEach(s => {
+        expect(s.riskLevel).toBe("Level 1");
+      });
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
 });

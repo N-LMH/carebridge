@@ -1090,6 +1090,10 @@ export const messages = {
       zh: '备注已保存',
       en: 'Note saved'
     },
+    noteSaveFailed: {
+      zh: '备注保存失败，请重试',
+      en: 'Unable to save note. Please try again.'
+    },
     statusUpdated: {
       zh: '状态已更新',
       en: 'Status updated'
@@ -1140,9 +1144,111 @@ export const messages = {
       zh: '查看患者病例、分诊结果和沟通记录',
       en: 'Review patient cases, triage results, and conversation history'
     },
+    // Dashboard stats
+    totalActive: {
+      zh: '活跃病例',
+      en: 'Active Cases'
+    },
+    highRisk: {
+      zh: '高风险',
+      en: 'High Risk'
+    },
+    waitingDoctorReply: {
+      zh: '待医生回复',
+      en: 'Awaiting Doctor Reply'
+    },
+    waitingPatientReply: {
+      zh: '待患者回复',
+      en: 'Awaiting Patient Reply'
+    },
+    resolved: {
+      zh: '已处理',
+      en: 'Resolved'
+    },
+    // Queues
+    queueUrgent: {
+      zh: '紧急处理',
+      en: 'Urgent'
+    },
+    queueNeedsReply: {
+      zh: '待回复',
+      en: 'Needs Reply'
+    },
+    queueRecent: {
+      zh: '最近活动',
+      en: 'Recent Activity'
+    },
+    // Doctor status labels
+    statusNew: {
+      zh: '新病例',
+      en: 'New'
+    },
+    statusUnderReview: {
+      zh: '审阅中',
+      en: 'Under Review'
+    },
+    statusAwaitingPatient: {
+      zh: '等待患者',
+      en: 'Awaiting Patient'
+    },
+    statusFollowUp: {
+      zh: '建议随访',
+      en: 'Follow-up Recommended'
+    },
+    statusReadyForVisit: {
+      zh: '可就诊',
+      en: 'Ready for Visit'
+    },
+    statusResolved: {
+      zh: '已处理',
+      en: 'Resolved'
+    },
+    statusEscalated: {
+      zh: '已转诊',
+      en: 'Escalated'
+    },
+    // Conversation state labels
+    convNone: {
+      zh: '无对话',
+      en: 'No Conversation'
+    },
+    convWaitingDoctor: {
+      zh: '等待医生',
+      en: 'Waiting Doctor'
+    },
+    convWaitingPatient: {
+      zh: '等待患者',
+      en: 'Waiting Patient'
+    },
+    convActive: {
+      zh: '进行中',
+      en: 'Active'
+    },
+    convClosed: {
+      zh: '已结束',
+      en: 'Closed'
+    },
+    // Priority labels
+    priorityLow: {
+      zh: '低',
+      en: 'Low'
+    },
+    priorityNormal: {
+      zh: '普通',
+      en: 'Normal'
+    },
+    priorityHigh: {
+      zh: '高',
+      en: 'High'
+    },
+    priorityUrgent: {
+      zh: '紧急',
+      en: 'Urgent'
+    },
+    // Filters
     searchPlaceholder: {
-      zh: '搜索患者姓名...',
-      en: 'Search patient name...'
+      zh: '搜索患者姓名、地区或症状...',
+      en: 'Search patient name, region, or symptoms...'
     },
     noResults: {
       zh: '未找到匹配的病例',
@@ -1153,12 +1259,36 @@ export const messages = {
       en: 'No patient cases yet'
     },
     filterByRisk: {
-      zh: '按风险筛选',
-      en: 'Filter by Risk'
+      zh: '风险等级',
+      en: 'Risk Level'
+    },
+    filterByStatus: {
+      zh: '处理状态',
+      en: 'Status'
+    },
+    filterByConversation: {
+      zh: '对话状态',
+      en: 'Conversation'
+    },
+    filterByPriority: {
+      zh: '优先级',
+      en: 'Priority'
     },
     allRisks: {
       zh: '全部风险',
       en: 'All Risks'
+    },
+    allStatuses: {
+      zh: '全部状态',
+      en: 'All Statuses'
+    },
+    allConversations: {
+      zh: '全部对话',
+      en: 'All Conversations'
+    },
+    allPriorities: {
+      zh: '全部优先级',
+      en: 'All Priorities'
     },
     sortBy: {
       zh: '排序',
@@ -1172,7 +1302,16 @@ export const messages = {
       zh: '风险优先',
       en: 'Highest Risk First'
     },
-    highRisk: {
+    sortPriority: {
+      zh: '优先级优先',
+      en: 'Priority First'
+    },
+    clearFilters: {
+      zh: '清除筛选',
+      en: 'Clear Filters'
+    },
+    // Case cards
+    highRiskCase: {
       zh: '高风险病例',
       en: 'High Risk Cases'
     },
@@ -1188,6 +1327,10 @@ export const messages = {
       zh: '{count} 条消息',
       en: '{count} messages'
     },
+    unreadCount: {
+      zh: '{count} 条未读',
+      en: '{count} unread'
+    },
     lastMessage: {
       zh: '最近消息',
       en: 'Latest Message'
@@ -1196,6 +1339,7 @@ export const messages = {
       zh: '暂无消息',
       en: 'No messages yet'
     },
+    // Conversation
     sendMessage: {
       zh: '发送',
       en: 'Send'
@@ -1216,6 +1360,40 @@ export const messages = {
       zh: '患者',
       en: 'Patient'
     },
+    // Quick prompts
+    quickPrompts: {
+      zh: '快捷提问',
+      en: 'Quick Prompts'
+    },
+    promptDuration: {
+      zh: '请问症状持续多长时间了？',
+      en: 'How long have you had these symptoms?'
+    },
+    promptWorsened: {
+      zh: '近24小时内症状是否明显加重？',
+      en: 'Have your symptoms worsened in the last 24 hours?'
+    },
+    promptMedication: {
+      zh: '目前服用的药物效果如何？',
+      en: 'How well is your current medication working?'
+    },
+    promptWarningSigns: {
+      zh: '请注意：如出现呼吸困难、胸痛加重等情况，请立即就医。',
+      en: 'Important: Seek immediate care if you experience worsening breathing difficulty or chest pain.'
+    },
+    promptVisitTiming: {
+      zh: '建议您尽快预约线下就诊。',
+      en: 'We recommend scheduling an in-person visit soon.'
+    },
+    waitingDoctorIndicator: {
+      zh: '等待医生回复',
+      en: 'Waiting for doctor to reply'
+    },
+    waitingPatientIndicator: {
+      zh: '等待患者回复',
+      en: 'Waiting for patient to reply'
+    },
+    // Detail page
     caseDetail: {
       zh: '病例详情',
       en: 'Case Detail'
@@ -1224,6 +1402,10 @@ export const messages = {
       zh: '返回列表',
       en: 'Back to List'
     },
+    patientSnapshot: {
+      zh: '患者概况',
+      en: 'Patient Snapshot'
+    },
     patientInfo: {
       zh: '患者信息',
       en: 'Patient Info'
@@ -1231,6 +1413,10 @@ export const messages = {
     triageResult: {
       zh: '分诊结果',
       en: 'Triage Result'
+    },
+    triageInterpretation: {
+      zh: '分诊解读',
+      en: 'Triage Interpretation'
     },
     visitSummary: {
       zh: '就诊摘要',
@@ -1251,6 +1437,88 @@ export const messages = {
     pendingReply: {
       zh: '待回复',
       en: 'Pending Reply'
+    },
+    // Doctor actions
+    actionsTitle: {
+      zh: '病例操作',
+      en: 'Case Actions'
+    },
+    changeStatus: {
+      zh: '更改状态',
+      en: 'Change Status'
+    },
+    setPriority: {
+      zh: '设置优先级',
+      en: 'Set Priority'
+    },
+    doctorNote: {
+      zh: '医生备注',
+      en: 'Doctor Note'
+    },
+    doctorNotePlaceholder: {
+      zh: '添加内部备注（患者不可见）...',
+      en: 'Add internal note (not visible to patient)...'
+    },
+    saveNote: {
+      zh: '保存备注',
+      en: 'Save Note'
+    },
+    noteSaved: {
+      zh: '备注已保存',
+      en: 'Note saved'
+    },
+    statusUpdated: {
+      zh: '状态已更新',
+      en: 'Status updated'
+    },
+    priorityUpdated: {
+      zh: '优先级已更新',
+      en: 'Priority updated'
+    },
+    // Detail metadata
+    chiefComplaint: {
+      zh: '主诉',
+      en: 'Chief Complaint'
+    },
+    department: {
+      zh: '建议科室',
+      en: 'Suggested Department'
+    },
+    createdAt: {
+      zh: '创建时间',
+      en: 'Created'
+    },
+    updatedAt: {
+      zh: '更新时间',
+      en: 'Updated'
+    },
+    riskLevel: {
+      zh: '风险等级',
+      en: 'Risk Level'
+    },
+    whyThisLevel: {
+      zh: '为何判定此风险等级',
+      en: 'Why this risk level was assigned'
+    },
+    mainRedFlags: {
+      zh: '主要危险信号',
+      en: 'Main Red Flags'
+    },
+    nextStep: {
+      zh: '建议下一步',
+      en: 'Recommended Next Step'
+    },
+    uncertainty: {
+      zh: '仍不确定的方面',
+      en: 'What Remains Uncertain'
+    },
+    uncertaintyText: {
+      zh: '基于当前信息，以下方面需要进一步确认：症状的具体诱因、用药反应、以及是否存在未报告的既往病史。',
+      en: 'Based on current information, the following need further confirmation: specific symptom triggers, medication response, and any unreported medical history.'
+    },
+    noRedFlags: {
+      zh: '当前未识别明确危险信号',
+      en: 'No clear red flags identified from current information'
     }
   },
   login: {
