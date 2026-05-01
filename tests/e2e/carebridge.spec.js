@@ -48,6 +48,17 @@ test("landing page shows entry points for user and admin", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Open Admin Panel|进入管理后台/ })).toBeVisible();
 });
 
+test("role entry buttons preserve doctor and admin intent", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("link", { name: /Doctor Dashboard|医生工作台/ }).click();
+  await expect(page).toHaveURL(/\/login\?redirect=\/doctor$/);
+
+  await page.goto("/");
+  await page.getByRole("link", { name: /Open Admin Panel|进入管理后台/ }).click();
+  await expect(page).toHaveURL(/\/login\?redirect=\/admin$/);
+});
+
 test("admin can log in and see the admin dashboard", async ({ page }) => {
   await page.goto("/login");
 
