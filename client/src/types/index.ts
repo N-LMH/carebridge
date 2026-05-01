@@ -161,6 +161,13 @@ export interface SessionSummary {
   followUpCount: number
 }
 
+// Admin session summary (extended)
+export interface AdminSessionSummary extends SessionSummary {
+  age: number | null
+  gender: Gender
+  redFlags: string[]
+}
+
 // 预设
 export interface DemoPreset {
   id: string

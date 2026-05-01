@@ -9,21 +9,31 @@
           <span class="nav-zh">{{ isEnglish ? 'MedBridge' : '医路桥' }}</span>
         </div>
       </router-link>
-      <div class="nav-badges">
-        <span class="badge badge--info">{{ t('nav.badgeInfo') }}</span>
-        <span class="badge badge--warn">{{ t('nav.badgeWarn') }}</span>
-        <div class="locale-toggle" :aria-label="t('nav.languageToggle')">
+
+      <div class="nav-right">
+        <div class="nav-links" v-if="showNavLinks">
+          <router-link to="/app" class="nav-link" :class="{ active: isAppRoute }">
+            {{ t('nav.userSide') }}
+          </router-link>
+          <router-link to="/admin" class="nav-link" :class="{ active: isAdminRoute }">
+            {{ t('nav.adminSide') }}
+          </router-link>
+        </div>
+
+        <div class="nav-meta">
+          <span class="nav-badge">{{ t('nav.badgeWarn') }}</span>
+          <span class="nav-divider"></span>
           <button
             type="button"
-            class="locale-option"
+            class="lang-btn"
             :class="{ active: locale === 'zh' }"
             @click="setLocale('zh')"
           >
-            中
+            中文
           </button>
           <button
             type="button"
-            class="locale-option"
+            class="lang-btn"
             :class="{ active: locale === 'en' }"
             @click="setLocale('en')"
           >
@@ -36,21 +46,35 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
 
 const { isEnglish, locale, setLocale, t } = useI18n()
+const route = useRoute()
+
+const showNavLinks = computed(() => route.path !== '/')
+
+const isAppRoute = computed(() =>
+  route.path.startsWith('/app') || route.path.startsWith('/session')
+)
+
+const isAdminRoute = computed(() =>
+  route.path.startsWith('/admin')
+)
 </script>
 
 <style scoped>
 .nav {
-  background: var(--c-surface);
-  border-bottom: 1px solid var(--c-border);
-  padding: var(--space-4) var(--space-6);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 var(--space-6);
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(8px);
-  background: rgba(255, 255, 255, 0.95);
+  height: 56px;
 }
 
 .nav-inner {
@@ -59,6 +83,7 @@ const { isEnglish, locale, setLocale, t } = useI18n()
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 100%;
   gap: var(--space-4);
 }
 
@@ -68,11 +93,12 @@ const { isEnglish, locale, setLocale, t } = useI18n()
   gap: var(--space-3);
   text-decoration: none;
   color: inherit;
+  flex-shrink: 0;
 }
 
 .nav-logo {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
 }
 
 .nav-titles {
@@ -84,78 +110,125 @@ const { isEnglish, locale, setLocale, t } = useI18n()
 .nav-name {
   font-size: var(--text-lg);
   font-weight: 700;
-  color: var(--c-primary);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .nav-slash {
-  color: var(--c-text-muted);
+  color: var(--gray-300);
   font-weight: 300;
 }
 
 .nav-zh {
-  font-size: var(--text-base);
-  color: var(--c-text-secondary);
-}
-
-.nav-badges {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
   font-weight: 500;
-  line-height: 1;
 }
 
-.badge--info {
-  background: var(--c-info-bg);
-  color: var(--c-info);
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
 }
 
-.badge--warn {
-  background: var(--c-warning-bg);
-  color: var(--c-warning);
+.nav-links {
+  display: flex;
+  gap: var(--space-1);
 }
 
-.locale-toggle {
-  display: inline-flex;
-  padding: 4px;
-  border-radius: var(--radius-full);
-  background: var(--c-bg);
-  border: 1px solid var(--c-border);
-  box-shadow: var(--shadow-sm);
-}
-
-.locale-option {
-  min-width: 42px;
-  padding: 6px 10px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--c-text-muted);
+.nav-link {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
   transition: all var(--transition-fast);
 }
 
-.locale-option.active {
-  background: var(--c-primary);
-  color: var(--c-text-inverse);
+.nav-link:hover {
+  color: var(--text);
+  background: var(--gray-50);
+}
+
+.nav-link.active {
+  color: var(--primary);
+  background: var(--blue-50);
+  font-weight: 600;
+}
+
+.nav-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nav-badge {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--warning);
+  padding: 2px var(--space-2);
+  background: var(--warning-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--orange-200);
+  white-space: nowrap;
+}
+
+.nav-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+}
+
+.lang-btn {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  letter-spacing: 0.02em;
+}
+
+.lang-btn:hover {
+  color: var(--text);
+  background: var(--gray-50);
+}
+
+.lang-btn.active {
+  color: var(--primary);
+  background: var(--blue-50);
 }
 
 @media (max-width: 768px) {
+  .nav {
+    padding: 0 var(--space-4);
+  }
+
   .nav-inner {
-    flex-direction: column;
+    flex-wrap: wrap;
+    height: auto;
+    padding: var(--space-3) 0;
     gap: var(--space-2);
   }
 
-  .nav-badges {
-    flex-wrap: wrap;
-    justify-content: center;
+  .nav-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .nav-links {
+    gap: 0;
+  }
+
+  .nav-badge {
+    display: none;
+  }
+
+  .nav-divider {
+    display: none;
   }
 }
 </style>

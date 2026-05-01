@@ -1,4 +1,5 @@
 import type {
+  AdminSessionSummary,
   DemoPreset,
   FollowUpQuestion,
   Locale,
@@ -489,6 +490,16 @@ export function localizeSessionSummary(summary: SessionSummary, locale: Locale):
     actionLabel: actionLabels[summary.riskLevel]?.[locale] || summary.actionLabel,
     suggestedDepartment: localizeDepartment(summary.suggestedDepartment, locale),
     symptoms: summary.symptoms.map((symptom) => localizeSymptomLabel(symptom, locale))
+  }
+}
+
+export function localizeAdminSessionSummary(summary: AdminSessionSummary, locale: Locale): AdminSessionSummary {
+  const localized = localizeSessionSummary(summary, locale)
+
+  return {
+    ...summary,
+    ...localized,
+    redFlags: summary.redFlags.map((flag) => redFlagLabels[flag]?.[locale] || flag)
   }
 }
 

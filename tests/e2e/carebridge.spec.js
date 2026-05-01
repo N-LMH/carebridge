@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 test("user can complete a triage flow and save a follow-up", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("link", { name: /Start Symptom Assessment|开始症状评估/ }).click();
+
   await page.getByRole("button", { name: "EN" }).click();
 
   await page.getByLabel(/^Patient Name$/).fill("Demo Patient");
@@ -36,4 +38,12 @@ test("user can complete a triage flow and save a follow-up", async ({ page }) =>
 
   await expect(page.getByText("Follow-up saved")).toBeVisible();
   await expect(page.getByText("Able to rest")).toBeVisible();
+});
+
+test("landing page shows entry points for user and admin", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.locator(".hero-title-main")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Start Symptom Assessment|开始症状评估/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Open Admin Panel|进入管理后台/ })).toBeVisible();
 });

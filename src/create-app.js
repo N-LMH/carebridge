@@ -174,10 +174,11 @@ function normalizePayload(body) {
 }
 
 export function createApp({
-  dataFile = path.resolve(__dirname, "../data/carebridge-db.json")
+  dataFile = path.resolve(__dirname, "../data/carebridge.db")
 } = {}) {
   const app = express();
-  const storage = createStorage(dataFile);
+  const legacyDataFile = path.resolve(path.dirname(dataFile), "carebridge-db.json");
+  const storage = createStorage(dataFile, { legacyJsonPath: legacyDataFile });
 
   app.use(express.json());
 
@@ -285,6 +286,49 @@ export function createApp({
     }
 
     return response.status(201).json(result);
+  });
+
+  // Admin API endpoints
+  app.get("/api/admin/sessions", async (request, response) => {
+    const q = request.query.q;
+    let sessions;
+
+    if (q && String(q).trim()) {
+      sessions = await storage.searchSessions(String(q).trim());
+    } else {
+      const limit = request.query.limit == null ? 50 : Number.parseInt(request.query.limit, 10);
+      sessions = await storage.listSessions(Number.isNaN(limit) ? 50 : limit);
+    }
+
+    return response.json({
+      sessions: sessions.map((session) => ({
+        id: session.id,
+        createdAt: session.createdAt,
+        patientName: session.intake.patientName || "Unnamed patient",
+        age: session.intake.age,
+        gender: session.intake.gender,
+        region: session.intake.region || "Unknown region",
+        symptoms: session.assessment.symptoms,
+        actionLabel: session.assessment.actionLabel,
+        riskLevel: session.assessment.riskLevel,
+        suggestedDepartment: session.assessment.suggestedDepartment,
+        followUpCount: session.followUps?.length || 0,
+        redFlags: session.assessment.redFlags || []
+      }))
+    });
+  });
+
+  app.get("/api/admin/sessions/:sessionId", async (request, response) => {
+    const session = await storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    return response.json({ session });
+  });
+
+  app.get("/api/admin/stats", async (_request, response) => {
+    const total = await storage.getSessionCount();
+    return response.json({ total });
   });
 
   app.all("/api/*path", (_request, response) => {

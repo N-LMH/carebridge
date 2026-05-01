@@ -21,6 +21,14 @@ export const messages = {
     languageToggle: {
       zh: '语言切换',
       en: 'Language switch'
+    },
+    userSide: {
+      zh: '患者端',
+      en: 'Patient'
+    },
+    adminSide: {
+      zh: '管理端',
+      en: 'Admin'
     }
   },
   common: {
@@ -535,8 +543,152 @@ export const messages = {
       en: 'Case not found'
     },
     backHome: {
-      zh: '返回首页',
-      en: 'Back to Home'
+      zh: '返回工作台',
+      en: 'Back to Workspace'
+    }
+  },
+  landing: {
+    badge: {
+      zh: '就医前辅助工具 · 非诊断系统',
+      en: 'Pre-Visit Assistant · Not a Diagnostic Tool'
+    },
+    subtitle: {
+      zh: '让更多人更早、更有准备地进入医疗系统',
+      en: 'Helping patients enter healthcare earlier and more prepared'
+    },
+    description: {
+      zh: 'CareBridge 帮助患者在正式就医前整理症状、识别风险、选择科室，并生成结构化病情摘要，让医生更快理解你的情况。',
+      en: 'CareBridge helps patients organize symptoms, assess urgency, choose the right department, and generate a structured summary before seeing a doctor.'
+    },
+    ctaUser: {
+      zh: '开始症状评估',
+      en: 'Start Symptom Assessment'
+    },
+    ctaAdmin: {
+      zh: '进入管理后台',
+      en: 'Open Admin Panel'
+    },
+    featureTriageTitle: {
+      zh: '结构化分诊',
+      en: 'Structured Triage'
+    },
+    featureTriageDesc: {
+      zh: '通过引导式问询收集症状信息，避免遗漏关键细节',
+      en: 'Guided questions capture symptom details without missing key context'
+    },
+    featureRiskTitle: {
+      zh: '风险分级',
+      en: 'Risk Stratification'
+    },
+    featureRiskDesc: {
+      zh: '四级风险评估，优先识别危险信号，保守建议',
+      en: 'Four-level risk assessment with red-flag detection and conservative guidance'
+    },
+    featureSummaryTitle: {
+      zh: '病情摘要',
+      en: 'Visit Summary'
+    },
+    featureSummaryDesc: {
+      zh: '自动生成可打印的医生交接摘要，提升就诊效率',
+      en: 'Auto-generated printable handoff summary for faster clinical intake'
+    },
+    featureFollowupTitle: {
+      zh: '随访追踪',
+      en: 'Follow-up Tracking'
+    },
+    featureFollowupDesc: {
+      zh: '记录症状变化与用药情况，持续观察病情走向',
+      en: 'Track symptom changes and medication over time'
+    },
+    safetyTitle: {
+      zh: '安全边界',
+      en: 'Safety Boundary'
+    },
+    safetyText: {
+      zh: 'CareBridge 不提供医学诊断，不替代医生面诊。当系统检测到危险信号时，会优先建议立即就医。本工具仅用于就医前的信息整理与辅助判断。',
+      en: 'CareBridge does not provide medical diagnoses and does not replace a clinician. When red flags are detected, the system prioritizes immediate care recommendations. This tool is for pre-visit preparation only.'
+    }
+  },
+  admin: {
+    title: {
+      zh: '管理后台',
+      en: 'Admin Panel'
+    },
+    desc: {
+      zh: '查看和管理已存储的患者分诊记录',
+      en: 'Review and manage stored patient triage records'
+    },
+    searchPlaceholder: {
+      zh: '搜索患者姓名、地区或症状...',
+      en: 'Search patient name, region, or symptoms...'
+    },
+    noResults: {
+      zh: '未找到匹配的记录',
+      en: 'No matching records found'
+    },
+    noSessions: {
+      zh: '暂无分诊记录',
+      en: 'No triage records yet'
+    },
+    colPatient: {
+      zh: '患者',
+      en: 'Patient'
+    },
+    colAge: {
+      zh: '年龄',
+      en: 'Age'
+    },
+    colSymptoms: {
+      zh: '症状',
+      en: 'Symptoms'
+    },
+    colRisk: {
+      zh: '风险',
+      en: 'Risk'
+    },
+    colDepartment: {
+      zh: '建议科室',
+      en: 'Department'
+    },
+    colDate: {
+      zh: '时间',
+      en: 'Date'
+    },
+    colFollowUps: {
+      zh: '随访',
+      en: 'Follow-ups'
+    },
+    viewDetail: {
+      zh: '查看详情',
+      en: 'View Detail'
+    },
+    backToList: {
+      zh: '返回列表',
+      en: 'Back to List'
+    },
+    yearsOld: {
+      zh: '岁',
+      en: 'years old'
+    },
+    intakeData: {
+      zh: '患者录入信息',
+      en: 'Patient Intake Data'
+    },
+    assessment: {
+      zh: '评估结果',
+      en: 'Assessment Result'
+    },
+    actionLabel: {
+      zh: '行动建议',
+      en: 'Action Recommendation'
+    },
+    visitSummary: {
+      zh: '就诊摘要',
+      en: 'Visit Summary'
+    },
+    followUpHistory: {
+      zh: '随访记录',
+      en: 'Follow-up History'
     }
   }
 } as const

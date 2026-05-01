@@ -40,6 +40,9 @@ temp/
 
 # App runtime / reports
 data/*.json
+data/*.db
+data/*.db-wal
+data/*.db-shm
 playwright-report/
 test-results/
 doc/pdf-preview/

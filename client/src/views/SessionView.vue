@@ -63,7 +63,7 @@ onMounted(async () => {
 
 function goBack() {
   triageStore.reset()
-  router.push('/')
+  router.push('/app')
 }
 </script>
 
