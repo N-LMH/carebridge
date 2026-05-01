@@ -153,6 +153,8 @@ npm run build:pdf
 
 ## Documentation
 
+- [中文说明文档](./doc/说明文档-中文.md)
+- [English Documentation](./doc/README-English.md)
 - [产品设计文档](./doc/产品设计.md)
 - [PPT 大纲](./doc/PPT大纲.md)
 - [视频脚本](./doc/视频脚本.md)
