@@ -1,56 +1,86 @@
-# CareBridge / 医路桥
+# CareBridge
 
-CareBridge is a healthcare triage and visit-preparation assistant built for hackathon delivery. It helps patients describe symptoms clearly, receive conservative next-step guidance, and generate a doctor-ready handoff before reaching formal care.
+CareBridge is a pre-visit healthcare triage and visit-preparation assistant. It helps patients organize symptoms, answer targeted follow-up questions, receive conservative next-step guidance, and generate a doctor-ready handoff before formal medical care begins.
 
-`医路桥` 不是替代医生诊断的工具，而是把医疗支持前移：帮助患者更早判断风险、更完整整理病情，并在正式就医前完成高质量准备。
+CareBridge is not a diagnosis engine and does not replace licensed clinicians. Its purpose is to improve the first step into healthcare: helping patients understand urgency, prepare context, and communicate more clearly.
+
+[中文说明](./README-zn.md)
 
 ![CareBridge home](./doc/screenshots/home.png)
 
-## Product Value
+## Problem
 
-Patients in rural, county, or underserved settings often struggle before diagnosis begins:
+Many patients, especially in rural, county-level, or underserved settings, face uncertainty before they reach a doctor:
 
 - They do not know whether symptoms are urgent.
 - They are unsure which department to visit.
-- They cannot explain symptoms clearly under pressure.
+- They struggle to explain symptoms clearly under pressure.
 - Family members lack a shared record of symptom changes.
-- Doctors lose time reconstructing fragmented information.
+- Doctors lose time reconstructing fragmented patient history.
 
 CareBridge focuses on the handoff between symptom uncertainty and real medical care.
 
-## Product Highlights
+## Core Features
 
-- Guided patient intake with bilingual symptom support.
-- Dynamic follow-up questions only when missing context changes risk.
-- Four-level triage output with explicit next-step guidance.
-- Doctor-ready visit summary for copy, print, or handoff.
-- Follow-up logging for symptom progression.
-- Recent-case sidebar for revisiting prior sessions.
-- Clear medical safety boundaries throughout the interface.
+- Patient intake: captures age, region, symptoms, duration, severity, chronic conditions, medications, and allergies.
+- Dynamic follow-up: asks targeted questions only when missing information affects risk.
+- Risk stratification: returns a four-level action recommendation based on symptoms and risk modifiers.
+- Department guidance: suggests emergency care, respiratory, cardiology, gastroenterology, general practice, or other relevant care paths.
+- Doctor handoff summary: creates a structured summary that can be copied, printed, or shown to a clinician.
+- Follow-up logging: records temperature, symptom changes, medications, and notes over time.
+- Recent sessions: allows users to revisit previous assessments and follow-up records.
 
 ## Screens
 
-### Intake workspace
+### Intake Workspace
 
 ![CareBridge intake](./doc/screenshots/home.png)
 
-### Triage result and visit summary
+### Triage Result
 
 ![CareBridge triage result](./doc/screenshots/triage-result.png)
 
-### Follow-up logging
+### Follow-Up Logging
 
 ![CareBridge follow-up](./doc/screenshots/follow-up.png)
 
-## Tech Stack
+## User Flow
 
-- Frontend: `Vue 3`, `Vite`, `Pinia`, `Vue Router`, TypeScript
-- Backend: `Node.js` + `Express`
-- Persistence: local JSON storage in `data/`
-- Testing: `Vitest`, `Supertest`, `Playwright`
-- Delivery assets: generated screenshots and PDF deck
+1. Open the application and enter basic patient information.
+2. Describe the main symptoms and duration.
+3. Click "Start Assessment".
+4. Answer follow-up questions if more information is needed.
+5. Review the risk level, reasoning, department suggestion, and immediate steps.
+6. Open the visit summary tab to get a doctor-facing handoff.
+7. Open the follow-up tab to save observation notes after the assessment.
 
-## Getting Started
+## Risk Levels
+
+CareBridge currently uses four action levels:
+
+- Level 1: Seek emergency care immediately.
+- Level 2: Visit offline care within 24 hours.
+- Level 3: Schedule a standard outpatient visit.
+- Level 4: Observe at home and keep tracking symptoms.
+
+Red-flag symptoms are escalated conservatively. Examples include severe breathing difficulty, chest pain with shortness of breath, or high fever with worsening symptoms.
+
+## Safety Boundaries
+
+- CareBridge is only for pre-visit guidance.
+- It cannot replace medical consultation, physical examination, or formal diagnosis.
+- Users should seek immediate offline care or emergency support when red flags appear.
+- The current MVP stores sessions in local JSON files and should not be used for real sensitive medical records without additional privacy and security work.
+
+## Technical Stack
+
+- Frontend: Vue 3, Vite, Pinia, Vue Router, TypeScript.
+- Backend: Node.js and Express.
+- Persistence: local JSON files in the `data/` directory.
+- Testing: Vitest, Supertest, and Playwright.
+- Delivery assets: generated screenshots and a PDF deck.
+
+## Local Setup
 
 Install dependencies:
 
@@ -71,9 +101,9 @@ Open:
 http://127.0.0.1:4173
 ```
 
-## Development
+## Development Mode
 
-For frontend iteration, run the API and Vite dev server in two terminals:
+For active development, run the backend and Vite frontend server in separate terminals:
 
 ```bash
 npm run dev
@@ -96,73 +126,42 @@ npm run test:e2e
 npm test
 ```
 
-Regenerate submission assets:
+Regenerate submission screenshots and the PDF deck:
 
 ```bash
 npm run capture:screenshots
 npm run build:pdf
 ```
 
-## Demo Flow
-
-1. Enter patient profile, symptoms, duration, and severity.
-2. Answer targeted follow-up questions for missing risk signals.
-3. Review risk level, reasoning, department suggestion, and immediate steps.
-4. Open the doctor-facing handoff summary.
-5. Save a follow-up record after observing symptom changes.
-6. Revisit prior sessions from the recent-case sidebar.
-
-## Safety Boundaries
-
-- CareBridge does not provide final medical diagnosis.
-- It does not replace licensed clinicians.
-- Red-flag symptoms are escalated conservatively.
-- Outputs are for pre-visit guidance and doctor handoff only.
-- The MVP stores sessions locally in `data/`.
-
 ## Repository Structure
 
 ```text
 .
-├── client
-│   └── src
-│       ├── components
-│       ├── stores
-│       ├── services
-│       └── views
-├── doc
-│   ├── CareBridge-Hackathon-Deck.pdf
-│   ├── 产品设计.md
-│   ├── PPT大纲.md
-│   ├── 视频脚本.md
-│   ├── 提交清单.md
-│   └── screenshots
-├── scripts
-│   ├── capture-screenshots.mjs
-│   └── generate_hackathon_pdf.py
-├── src
-│   ├── create-app.js
-│   ├── storage.js
-│   └── triage-engine.js
-├── tests
-│   ├── api.test.js
-│   ├── triage-engine.test.js
-│   └── e2e
-└── server.js
+├── client                  Vue frontend application
+├── src                     Express backend and triage engine
+├── tests                   Unit, API, and end-to-end tests
+├── scripts                 Screenshot and PDF generation scripts
+├── doc                     Product docs, screenshots, and submission assets
+├── server.js               Server entry point
+├── package.json            Scripts and dependencies
+├── README.md               English project documentation
+└── README-zn.md            Chinese project documentation
 ```
 
 ## Documentation
 
-- [中文说明文档](./doc/说明文档-中文.md)
-- [English Documentation](./doc/README-English.md)
-- [产品设计文档](./doc/产品设计.md)
-- [PPT 大纲](./doc/PPT大纲.md)
-- [视频脚本](./doc/视频脚本.md)
-- [提交清单](./doc/提交清单.md)
-- [提交 PDF](./doc/CareBridge-Hackathon-Deck.pdf)
+- [Chinese README](./README-zn.md)
+- [Detailed English Documentation](./doc/README-English.md)
+- [Product Design Document](./doc/产品设计.md)
+- [Submission PDF](./doc/CareBridge-Hackathon-Deck.pdf)
 
-## Hackathon Positioning
+## Hackathon Strengths
 
-CareBridge is designed to score well on practicality, execution, healthcare impact, and responsible product boundaries. The project is a working local MVP with tests, screenshots, PDF materials, and a complete demo path.
+- Complete delivery: frontend, backend, persistence, tests, screenshots, and documentation.
+- Clear healthcare scenario: focuses on the practical pre-visit gap before diagnosis.
+- Responsible boundaries: supports preparation and escalation, not replacement of doctors.
+- Easy demo: judges can complete the full patient journey in a few minutes.
+
+## Vision
 
 Healthcare support should begin before the patient reaches a doctor, not only after.
