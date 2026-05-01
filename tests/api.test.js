@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
+import Database from "better-sqlite3";
 import request from "supertest";
 import { beforeEach, afterEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/create-app.js";
@@ -27,6 +29,11 @@ async function cleanupDb(filePath) {
   try {
     await fs.unlink(filePath + "-shm");
   } catch {}
+}
+
+async function loginAs(client, username, password) {
+  const res = await client.post("/api/auth/login").send({ username, password });
+  return res.body.token;
 }
 
 describe("CareBridge API", () => {
@@ -200,6 +207,8 @@ describe("CareBridge API", () => {
     const { client, filePath } = await buildClient();
 
     try {
+      const token = await loginAs(client, "admin", "admin123");
+
       await client.post("/api/triage").send({
         patientName: "Admin Test",
         age: 45,
@@ -222,7 +231,7 @@ describe("CareBridge API", () => {
         numbness: "no"
       });
 
-      const response = await client.get("/api/admin/sessions");
+      const response = await client.get("/api/admin/sessions").set("Authorization", `Bearer ${token}`);
 
       expect(response.status).toBe(200);
       expect(response.body.sessions).toHaveLength(1);
@@ -239,6 +248,8 @@ describe("CareBridge API", () => {
     const { client, filePath } = await buildClient();
 
     try {
+      const token = await loginAs(client, "admin", "admin123");
+
       await client.post("/api/triage").send({
         patientName: "Alice",
         age: 30,
@@ -277,7 +288,7 @@ describe("CareBridge API", () => {
         chestPain: false
       });
 
-      const response = await client.get("/api/admin/sessions?q=alice");
+      const response = await client.get("/api/admin/sessions?q=alice").set("Authorization", `Bearer ${token}`);
 
       expect(response.status).toBe(200);
       expect(response.body.sessions).toHaveLength(1);
@@ -291,6 +302,8 @@ describe("CareBridge API", () => {
     const { client, filePath } = await buildClient();
 
     try {
+      const token = await loginAs(client, "admin", "admin123");
+
       const triage = await client.post("/api/triage").send({
         patientName: "Detail Test",
         age: 35,
@@ -314,7 +327,7 @@ describe("CareBridge API", () => {
 
       const sessionId = triage.body.session.id;
 
-      const response = await client.get(`/api/admin/sessions/${sessionId}`);
+      const response = await client.get(`/api/admin/sessions/${sessionId}`).set("Authorization", `Bearer ${token}`);
 
       expect(response.status).toBe(200);
       expect(response.body.session.id).toBe(sessionId);
@@ -413,6 +426,8 @@ describe("CareBridge API", () => {
     const { client, filePath } = await buildClient();
 
     try {
+      const token = await loginAs(client, "admin", "admin123");
+
       const triage = await client.post("/api/triage").send({
         patientName: "Patch Test",
         age: 40,
@@ -441,6 +456,7 @@ describe("CareBridge API", () => {
 
       const patchRes = await client
         .patch(`/api/admin/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`)
         .send({
           adminNote: "Reviewed by admin",
           adminStatus: "reviewed",
@@ -452,7 +468,7 @@ describe("CareBridge API", () => {
       expect(patchRes.body.session.adminStatus).toBe("reviewed");
       expect(patchRes.body.session.tags).toEqual(["follow-up-needed"]);
 
-      const getRes = await client.get(`/api/admin/sessions/${sessionId}`);
+      const getRes = await client.get(`/api/admin/sessions/${sessionId}`).set("Authorization", `Bearer ${token}`);
       expect(getRes.body.session.adminNote).toBe("Reviewed by admin");
       expect(getRes.body.session.adminStatus).toBe("reviewed");
     } finally {
@@ -464,6 +480,8 @@ describe("CareBridge API", () => {
     const { client, filePath } = await buildClient();
 
     try {
+      const token = await loginAs(client, "admin", "admin123");
+
       await client.post("/api/triage").send({
         patientName: "Stats One",
         age: 30,
@@ -509,7 +527,7 @@ describe("CareBridge API", () => {
         activityRelation: "both"
       });
 
-      const statsRes = await client.get("/api/admin/stats");
+      const statsRes = await client.get("/api/admin/stats").set("Authorization", `Bearer ${token}`);
 
       expect(statsRes.status).toBe(200);
       expect(statsRes.body.total).toBe(2);
@@ -526,6 +544,8 @@ describe("CareBridge API", () => {
     const { client, filePath } = await buildClient();
 
     try {
+      const token = await loginAs(client, "admin", "admin123");
+
       await client.post("/api/triage").send({
         patientName: "Filter Mild",
         age: 25,
@@ -574,13 +594,200 @@ describe("CareBridge API", () => {
         numbness: "no"
       });
 
-      const filtered = await client.get("/api/admin/sessions?riskLevel=Level 1");
+      const filtered = await client.get("/api/admin/sessions?riskLevel=Level 1").set("Authorization", `Bearer ${token}`);
 
       expect(filtered.status).toBe(200);
       expect(filtered.body.sessions.length).toBeGreaterThanOrEqual(1);
       filtered.body.sessions.forEach((s) => {
         expect(s.riskLevel).toBe("Level 1");
       });
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("auth API logs in with valid credentials", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const response = await client.post("/api/auth/login").send({
+        username: "doctor",
+        password: "doctor123"
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.token).toBeTruthy();
+      expect(response.body.user.role).toBe("doctor");
+      expect(response.body.user.displayName).toBe("Dr. Zhang");
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("auth API upgrades legacy password hashes after a successful login", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const db = new Database(filePath);
+      const legacyHash = crypto.createHash("sha256").update("doctor123").digest("hex");
+      db.prepare("UPDATE users SET password_hash = ? WHERE username = ?").run(legacyHash, "doctor");
+      db.close();
+
+      const response = await client.post("/api/auth/login").send({
+        username: "doctor",
+        password: "doctor123"
+      });
+
+      expect(response.status).toBe(200);
+
+      const verifyDb = new Database(filePath, { readonly: true });
+      const row = verifyDb.prepare("SELECT password_hash FROM users WHERE username = ?").get("doctor");
+      verifyDb.close();
+
+      expect(row.password_hash.startsWith("scrypt$")).toBe(true);
+      expect(row.password_hash).not.toBe(legacyHash);
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("auth API rejects invalid credentials", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const response = await client.post("/api/auth/login").send({
+        username: "doctor",
+        password: "wrongpassword"
+      });
+
+      expect(response.status).toBe(401);
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("auth API returns current user with valid token", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "admin", "admin123");
+      const response = await client.get("/api/auth/me").set("Authorization", `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.user.username).toBe("admin");
+      expect(response.body.user.role).toBe("admin");
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("doctor API requires authentication", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const response = await client.get("/api/doctor/sessions");
+      expect(response.status).toBe(401);
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("doctor API lists sessions for authenticated doctor", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "doctor", "doctor123");
+
+      await client.post("/api/triage").send({
+        patientName: "Doctor Test",
+        age: 30,
+        gender: "female",
+        region: "city",
+        symptoms: ["fever"],
+        symptomNotes: "fever",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.5,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const response = await client.get("/api/doctor/sessions").set("Authorization", `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.sessions).toHaveLength(1);
+      expect(response.body.sessions[0].patientName).toBe("Doctor Test");
+      expect(response.body.sessions[0].lastMessage).toBeNull();
+      expect(response.body.sessions[0].messageCount).toBe(0);
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("doctor and patient can exchange messages", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "doctor", "doctor123");
+
+      const triage = await client.post("/api/triage").send({
+        patientName: "Chat Test",
+        age: 40,
+        gender: "male",
+        region: "city",
+        symptoms: ["headache"],
+        symptomNotes: "mild headache",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.0,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const sessionId = triage.body.session.id;
+
+      // Patient sends a message
+      const patientMsg = await client
+        .post(`/api/sessions/${sessionId}/messages`)
+        .send({ content: "I have a headache" });
+
+      expect(patientMsg.status).toBe(201);
+      expect(patientMsg.body.message.senderType).toBe("patient");
+
+      // Doctor sends a reply
+      const doctorMsg = await client
+        .post(`/api/doctor/sessions/${sessionId}/messages`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ content: "How long have you had this headache?" });
+
+      expect(doctorMsg.status).toBe(201);
+      expect(doctorMsg.body.message.senderType).toBe("doctor");
+
+      // Get messages
+      const messages = await client
+        .get(`/api/doctor/sessions/${sessionId}/messages`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(messages.status).toBe(200);
+      expect(messages.body.messages).toHaveLength(2);
+      expect(messages.body.messages[0].content).toBe("I have a headache");
+      expect(messages.body.messages[1].content).toBe("How long have you had this headache?");
     } finally {
       await cleanupDb(filePath);
     }

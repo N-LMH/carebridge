@@ -201,3 +201,42 @@ export interface DemoPreset {
   medications: string
   allergies: string
 }
+
+// Auth
+export interface User {
+  id: string
+  username: string
+  role: 'doctor' | 'admin'
+  displayName: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: User
+}
+
+// Messages / Conversation
+export type SenderType = 'doctor' | 'patient' | 'system'
+
+export interface Message {
+  id: string
+  sessionId: string
+  senderType: SenderType
+  senderId: string | null
+  content: string
+  createdAt: string
+}
+
+// Doctor session summary
+export interface DoctorSessionSummary extends SessionSummary {
+  age: number | null
+  gender: Gender
+  redFlags: string[]
+  adminStatus: AdminStatus
+  lastMessage: { content: string; createdAt: string; senderType: SenderType } | null
+  messageCount: number
+}
+
+export interface DoctorSession extends Session {
+  messages: Message[]
+}

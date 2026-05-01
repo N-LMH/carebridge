@@ -29,6 +29,18 @@ export const messages = {
     adminSide: {
       zh: '管理端',
       en: 'Admin'
+    },
+    doctorSide: {
+      zh: '医生端',
+      en: 'Doctor'
+    },
+    login: {
+      zh: '登录',
+      en: 'Login'
+    },
+    logout: {
+      zh: '退出',
+      en: 'Logout'
     }
   },
   common: {
@@ -735,6 +747,30 @@ export const messages = {
     latestEntry: {
       zh: '最近一次',
       en: 'Latest'
+    },
+    conversationTitle: {
+      zh: '与医生沟通',
+      en: 'Doctor Conversation'
+    },
+    conversationHint: {
+      zh: '可在这里补充症状变化或向医生说明新的担忧，医生回复后会同步显示。',
+      en: 'Use this thread to share symptom changes or new concerns. Doctor replies will appear here.'
+    },
+    reloadMessages: {
+      zh: '刷新消息',
+      en: 'Refresh Messages'
+    },
+    messageSent: {
+      zh: '消息已发送',
+      en: 'Message sent'
+    },
+    messageSendFailed: {
+      zh: '消息发送失败，请稍后重试',
+      en: 'Message failed to send. Please try again.'
+    },
+    messageReloadFailed: {
+      zh: '消息刷新失败',
+      en: 'Unable to refresh messages'
     }
   },
   sidebar: {
@@ -803,6 +839,10 @@ export const messages = {
     ctaAdmin: {
       zh: '进入管理后台',
       en: 'Open Admin Panel'
+    },
+    ctaDoctor: {
+      zh: '医生工作台',
+      en: 'Doctor Dashboard'
     },
     featureTriageTitle: {
       zh: '结构化分诊',
@@ -1089,6 +1129,170 @@ export const messages = {
     daysAgo: {
       zh: '{days} 天前',
       en: '{days}d ago'
+    }
+  },
+  doctor: {
+    title: {
+      zh: '医生工作台',
+      en: 'Doctor Dashboard'
+    },
+    desc: {
+      zh: '查看患者病例、分诊结果和沟通记录',
+      en: 'Review patient cases, triage results, and conversation history'
+    },
+    searchPlaceholder: {
+      zh: '搜索患者姓名...',
+      en: 'Search patient name...'
+    },
+    noResults: {
+      zh: '未找到匹配的病例',
+      en: 'No matching cases found'
+    },
+    noSessions: {
+      zh: '暂无患者病例',
+      en: 'No patient cases yet'
+    },
+    filterByRisk: {
+      zh: '按风险筛选',
+      en: 'Filter by Risk'
+    },
+    allRisks: {
+      zh: '全部风险',
+      en: 'All Risks'
+    },
+    sortBy: {
+      zh: '排序',
+      en: 'Sort'
+    },
+    sortDate: {
+      zh: '最新优先',
+      en: 'Newest First'
+    },
+    sortRisk: {
+      zh: '风险优先',
+      en: 'Highest Risk First'
+    },
+    highRisk: {
+      zh: '高风险病例',
+      en: 'High Risk Cases'
+    },
+    waitingReply: {
+      zh: '等待回复',
+      en: 'Awaiting Reply'
+    },
+    recentCases: {
+      zh: '最近病例',
+      en: 'Recent Cases'
+    },
+    messageCount: {
+      zh: '{count} 条消息',
+      en: '{count} messages'
+    },
+    lastMessage: {
+      zh: '最近消息',
+      en: 'Latest Message'
+    },
+    noMessages: {
+      zh: '暂无消息',
+      en: 'No messages yet'
+    },
+    sendMessage: {
+      zh: '发送',
+      en: 'Send'
+    },
+    messagePlaceholder: {
+      zh: '输入消息...',
+      en: 'Type a message...'
+    },
+    conversationTitle: {
+      zh: '医患沟通',
+      en: 'Doctor-Patient Conversation'
+    },
+    doctorSays: {
+      zh: '医生',
+      en: 'Doctor'
+    },
+    patientSays: {
+      zh: '患者',
+      en: 'Patient'
+    },
+    caseDetail: {
+      zh: '病例详情',
+      en: 'Case Detail'
+    },
+    backToList: {
+      zh: '返回列表',
+      en: 'Back to List'
+    },
+    patientInfo: {
+      zh: '患者信息',
+      en: 'Patient Info'
+    },
+    triageResult: {
+      zh: '分诊结果',
+      en: 'Triage Result'
+    },
+    visitSummary: {
+      zh: '就诊摘要',
+      en: 'Visit Summary'
+    },
+    followUpHistory: {
+      zh: '随访记录',
+      en: 'Follow-up History'
+    },
+    totalCases: {
+      zh: '总病例',
+      en: 'Total Cases'
+    },
+    highRiskCount: {
+      zh: '高风险',
+      en: 'High Risk'
+    },
+    pendingReply: {
+      zh: '待回复',
+      en: 'Pending Reply'
+    }
+  },
+  login: {
+    title: {
+      zh: '登录 CareBridge',
+      en: 'Sign in to CareBridge'
+    },
+    subtitle: {
+      zh: '请输入账号和密码',
+      en: 'Enter your credentials'
+    },
+    username: {
+      zh: '用户名',
+      en: 'Username'
+    },
+    usernamePlaceholder: {
+      zh: '请输入用户名',
+      en: 'Enter username'
+    },
+    password: {
+      zh: '密码',
+      en: 'Password'
+    },
+    passwordPlaceholder: {
+      zh: '请输入密码',
+      en: 'Enter password'
+    },
+    submit: {
+      zh: '登录',
+      en: 'Sign In'
+    },
+    loggingIn: {
+      zh: '登录中...',
+      en: 'Signing in...'
+    },
+    error: {
+      zh: '用户名或密码错误',
+      en: 'Invalid username or password'
+    },
+    demoHint: {
+      zh: '演示账号：doctor / doctor123 或 admin / admin123',
+      en: 'Demo accounts: doctor / doctor123 or admin / admin123'
     }
   }
 } as const

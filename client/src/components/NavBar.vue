@@ -15,6 +15,9 @@
           <router-link to="/app" class="nav-link" :class="{ active: isAppRoute }">
             {{ t('nav.userSide') }}
           </router-link>
+          <router-link to="/doctor" class="nav-link" :class="{ active: isDoctorRoute }">
+            {{ t('nav.doctorSide') }}
+          </router-link>
           <router-link to="/admin" class="nav-link" :class="{ active: isAdminRoute }">
             {{ t('nav.adminSide') }}
           </router-link>
@@ -22,6 +25,19 @@
 
         <div class="nav-meta">
           <span class="nav-badge">{{ t('nav.badgeWarn') }}</span>
+          <span class="nav-divider"></span>
+          <button
+            v-if="authStore.isAuthenticated"
+            type="button"
+            class="nav-user-btn"
+            @click="handleLogout"
+          >
+            {{ authStore.user?.displayName }}
+            <span class="nav-logout-text">{{ t('nav.logout') }}</span>
+          </button>
+          <router-link v-else-if="showLoginLink" to="/login" class="nav-link nav-login-link">
+            {{ t('nav.login') }}
+          </router-link>
           <span class="nav-divider"></span>
           <button
             type="button"
@@ -47,21 +63,34 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
+import { useAuthStore } from '@/stores/auth'
 
 const { isEnglish, locale, setLocale, t } = useI18n()
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 
-const showNavLinks = computed(() => route.path !== '/')
+const showNavLinks = computed(() => route.path !== '/' && route.name !== 'login')
+const showLoginLink = computed(() => route.name !== 'login')
 
 const isAppRoute = computed(() =>
   route.path.startsWith('/app') || route.path.startsWith('/session')
 )
 
+const isDoctorRoute = computed(() =>
+  route.path.startsWith('/doctor')
+)
+
 const isAdminRoute = computed(() =>
   route.path.startsWith('/admin')
 )
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/')
+}
 </script>
 
 <style scoped>
@@ -159,6 +188,11 @@ const isAdminRoute = computed(() =>
   font-weight: 600;
 }
 
+.nav-login-link {
+  font-weight: 600;
+  color: var(--primary);
+}
+
 .nav-meta {
   display: flex;
   align-items: center;
@@ -180,6 +214,28 @@ const isAdminRoute = computed(() =>
   width: 1px;
   height: 16px;
   background: var(--border);
+}
+
+.nav-user-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.nav-user-btn:hover {
+  color: var(--text);
+  background: var(--gray-50);
+}
+
+.nav-logout-text {
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .lang-btn {

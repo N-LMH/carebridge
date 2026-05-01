@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -18,6 +19,33 @@ function safeReadLegacySessions(legacyJsonPath) {
   } catch {
     return [];
   }
+}
+
+function hashLegacyPassword(password) {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+function createPasswordHash(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `scrypt$${salt}$${derivedKey}`;
+}
+
+function verifyPassword(password, storedHash) {
+  if (typeof storedHash !== "string" || !storedHash) {
+    return false;
+  }
+
+  if (storedHash.startsWith("scrypt$")) {
+    const [, salt, derivedKey] = storedHash.split("$");
+    if (!salt || !derivedKey) return false;
+
+    const candidate = crypto.scryptSync(password, salt, 64);
+    const expected = Buffer.from(derivedKey, "hex");
+    return expected.length === candidate.length && crypto.timingSafeEqual(expected, candidate);
+  }
+
+  return hashLegacyPassword(password) === storedHash;
 }
 
 export function createStorage(dbPath, { legacyJsonPath } = {}) {
@@ -54,6 +82,56 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
     db.exec("ALTER TABLE sessions ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'");
   }
 
+  // Users table for doctor/admin authentication
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('doctor', 'admin')),
+      display_name TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  // Messages table for doctor-patient conversation
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      sender_type TEXT NOT NULL CHECK(sender_type IN ('doctor', 'patient', 'system')),
+      sender_id TEXT,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (session_id) REFERENCES sessions(id)
+    );
+  `);
+
+  // Seed default users if none exist
+  const userCount = db.prepare("SELECT COUNT(*) as count FROM users").get();
+  if (userCount.count === 0) {
+    const insertUser = db.prepare(`
+      INSERT OR IGNORE INTO users (id, username, password_hash, role, display_name, created_at)
+      VALUES (@id, @username, @passwordHash, @role, @displayName, @createdAt)
+    `);
+    insertUser.run({
+      id: "user_doctor_1",
+      username: "doctor",
+      passwordHash: createPasswordHash("doctor123"),
+      role: "doctor",
+      displayName: "Dr. Zhang",
+      createdAt: new Date().toISOString()
+    });
+    insertUser.run({
+      id: "user_admin_1",
+      username: "admin",
+      passwordHash: createPasswordHash("admin123"),
+      role: "admin",
+      displayName: "Admin",
+      createdAt: new Date().toISOString()
+    });
+  }
+
   const insertSession = db.prepare(`
     INSERT OR IGNORE INTO sessions (id, created_at, patient_data, assessment_data, summary_data, follow_ups, admin_note, admin_status, tags)
     VALUES (@id, @createdAt, @patientData, @assessmentData, @summaryData, @followUps, @adminNote, @adminStatus, @tags)
@@ -69,6 +147,9 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
   const countSessions = db.prepare(`SELECT COUNT(*) as count FROM sessions`);
   const updateFollowUps = db.prepare(`
     UPDATE sessions SET follow_ups = ? WHERE id = ?
+  `);
+  const updateUserPasswordHash = db.prepare(`
+    UPDATE users SET password_hash = ? WHERE id = ?
   `);
 
   function rowToSession(row) {
@@ -259,6 +340,87 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
 
     close() {
       db.close();
+    },
+
+    // Auth methods
+    authenticateUser(username, password) {
+      const row = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+      if (!row) return null;
+      if (!verifyPassword(password, row.password_hash)) return null;
+
+      if (!String(row.password_hash).startsWith("scrypt$")) {
+        updateUserPasswordHash.run(createPasswordHash(password), row.id);
+      }
+
+      return { id: row.id, username: row.username, role: row.role, displayName: row.display_name };
+    },
+
+    getUserById(id) {
+      const row = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+      if (!row) return null;
+      return { id: row.id, username: row.username, role: row.role, displayName: row.display_name };
+    },
+
+    // Message methods
+    getMessages(sessionId) {
+      const rows = db.prepare("SELECT * FROM messages WHERE session_id = ? ORDER BY created_at ASC").all(sessionId);
+      return rows.map(row => ({
+        id: row.id,
+        sessionId: row.session_id,
+        senderType: row.sender_type,
+        senderId: row.sender_id,
+        content: row.content,
+        createdAt: row.created_at
+      }));
+    },
+
+    addMessage(sessionId, senderType, senderId, content) {
+      const id = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const createdAt = new Date().toISOString();
+      db.prepare("INSERT INTO messages (id, session_id, sender_type, sender_id, content, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(id, sessionId, senderType, senderId, content, createdAt);
+      return { id, sessionId, senderType, senderId, content, createdAt };
+    },
+
+    getDoctorSessions({ q, riskLevel, sort } = {}) {
+      let sessions = selectAllSessions.all().map(rowToSession);
+
+      if (q && String(q).trim()) {
+        const query = String(q).trim().toLowerCase();
+        sessions = sessions.filter(s => {
+          const name = (s.intake.patientName || "").toLowerCase();
+          const region = (s.intake.region || "").toLowerCase();
+          const symptoms = (s.assessment.symptoms || []).join(" ").toLowerCase();
+          return name.includes(query) || region.includes(query) || symptoms.includes(query);
+        });
+      }
+
+      if (riskLevel) {
+        sessions = sessions.filter(s => s.assessment.riskLevel === riskLevel);
+      }
+
+      if (sort === 'risk') {
+        const order = { 'Level 1': 1, 'Level 2': 2, 'Level 3': 3, 'Level 4': 4 };
+        sessions.sort((a, b) => (order[a.assessment.riskLevel] || 5) - (order[b.assessment.riskLevel] || 5));
+      }
+
+      // Add last message info and unread count
+      return sessions.map(session => {
+        const msgs = db.prepare("SELECT * FROM messages WHERE session_id = ? ORDER BY created_at DESC LIMIT 1").all(session.id);
+        const msgCount = db.prepare("SELECT COUNT(*) as count FROM messages WHERE session_id = ?").get(session.id);
+        return {
+          ...session,
+          lastMessage: msgs.length > 0 ? { content: msgs[0].content, createdAt: msgs[0].created_at, senderType: msgs[0].sender_type } : null,
+          messageCount: msgCount.count
+        };
+      });
+    },
+
+    getDoctorSessionDetail(sessionId) {
+      const session = this.getSession(sessionId);
+      if (!session) return null;
+      const messages = this.getMessages(sessionId);
+      return { ...session, messages };
     }
   };
 }

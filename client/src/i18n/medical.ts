@@ -1,6 +1,7 @@
 import type {
   AdminSessionSummary,
   DemoPreset,
+  DoctorSessionSummary,
   FollowUpQuestion,
   Locale,
   QuestionOption,
@@ -494,6 +495,16 @@ export function localizeSessionSummary(summary: SessionSummary, locale: Locale):
 }
 
 export function localizeAdminSessionSummary(summary: AdminSessionSummary, locale: Locale): AdminSessionSummary {
+  const localized = localizeSessionSummary(summary, locale)
+
+  return {
+    ...summary,
+    ...localized,
+    redFlags: summary.redFlags.map((flag) => redFlagLabels[flag]?.[locale] || flag)
+  }
+}
+
+export function localizeDoctorSessionSummary(summary: DoctorSessionSummary, locale: Locale): DoctorSessionSummary {
   const localized = localizeSessionSummary(summary, locale)
 
   return {

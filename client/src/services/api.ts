@@ -4,24 +4,39 @@ import type {
   Session,
   SessionListResponse,
   FollowUpRecord,
-  AdminStats
+  AdminStats,
+  AuthResponse,
+  User,
+  Message,
+  DoctorSessionSummary,
+  DoctorSession
 } from '@/types'
 
 const API_BASE = '/api'
 
+function getToken(): string | null {
+  return localStorage.getItem('carebridge_token')
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = getToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options?.headers as Record<string, string>
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
   const response = await fetch(`${API_BASE}${url}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers
-    },
-    ...options
+    ...options,
+    headers
   })
 
   const data = await response.json()
 
   if (!response.ok) {
-    const error = new Error(data.message || 'Request failed') as Error & {
+    const error = new Error(data.message || data.error || 'Request failed') as Error & {
       status?: number
       errors?: typeof data.errors
     }
@@ -34,6 +49,18 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  // Auth
+  login(username: string, password: string) {
+    return request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    })
+  },
+
+  getMe() {
+    return request<{ user: User }>('/auth/me')
+  },
+
   // 健康检查
   health() {
     return request<{ status: string }>('/health')
@@ -65,6 +92,18 @@ export const api = {
     })
   },
 
+  // Patient messages
+  getSessionMessages(sessionId: string) {
+    return request<{ messages: Message[] }>(`/sessions/${sessionId}/messages`)
+  },
+
+  sendSessionMessage(sessionId: string, content: string) {
+    return request<{ message: Message }>(`/sessions/${sessionId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    })
+  },
+
   // Admin: 获取统计信息
   getAdminStats() {
     return request<AdminStats>('/admin/stats')
@@ -85,5 +124,35 @@ export const api = {
       if (v !== undefined && v !== '') qs.set(k, String(v))
     }
     return request<SessionListResponse>(`/admin/sessions?${qs.toString()}`)
+  },
+
+  // Doctor: 获取会话列表
+  getDoctorSessions(params?: Record<string, string>) {
+    const qs = new URLSearchParams()
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v) qs.set(k, v)
+      }
+    }
+    const queryStr = qs.toString()
+    return request<{ sessions: DoctorSessionSummary[] }>(`/doctor/sessions${queryStr ? '?' + queryStr : ''}`)
+  },
+
+  // Doctor: 获取会话详情
+  getDoctorSession(sessionId: string) {
+    return request<{ session: DoctorSession }>(`/doctor/sessions/${sessionId}`)
+  },
+
+  // Doctor: 获取消息
+  getDoctorMessages(sessionId: string) {
+    return request<{ messages: Message[] }>(`/doctor/sessions/${sessionId}/messages`)
+  },
+
+  // Doctor: 发送消息
+  sendDoctorMessage(sessionId: string, content: string) {
+    return request<{ message: Message }>(`/doctor/sessions/${sessionId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    })
   }
 }

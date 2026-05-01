@@ -97,14 +97,62 @@
       </svg>
       <p>{{ t('followupLog.empty') }}</p>
     </div>
+
+    <section class="conversation-section">
+      <div class="conversation-header">
+        <div>
+          <h4 class="conversation-title">{{ t('followupLog.conversationTitle') }}</h4>
+          <p class="conversation-desc">{{ t('followupLog.conversationHint') }}</p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" @click="loadMessages" :disabled="loadingMessages">
+          {{ t('followupLog.reloadMessages') }}
+        </button>
+      </div>
+
+      <div v-if="loadingMessages" class="conversation-empty">{{ t('common.loading') }}</div>
+      <div v-else-if="messages.length === 0" class="conversation-empty">{{ t('doctor.noMessages') }}</div>
+      <div v-else class="conversation-list">
+        <article
+          v-for="message in messages"
+          :key="message.id"
+          class="conversation-message"
+          :class="{
+            'conversation-message--doctor': message.senderType === 'doctor',
+            'conversation-message--patient': message.senderType === 'patient',
+            'conversation-message--system': message.senderType === 'system'
+          }"
+        >
+          <span class="conversation-sender">
+            {{ message.senderType === 'doctor' ? t('doctor.doctorSays') : message.senderType === 'patient' ? t('doctor.patientSays') : 'System' }}
+          </span>
+          <p class="conversation-content">{{ message.content }}</p>
+          <span class="conversation-time">{{ formatDate(message.createdAt) }}</span>
+        </article>
+      </div>
+
+      <form class="conversation-form" @submit.prevent="handleSendMessage">
+        <input
+          v-model="messageDraft"
+          class="field-input"
+          type="text"
+          :placeholder="t('doctor.messagePlaceholder')"
+        />
+        <button type="submit" class="btn btn-primary" :disabled="sendingMessage || !messageDraft.trim()">
+          {{ t('doctor.sendMessage') }}
+        </button>
+      </form>
+
+      <p v-if="messageStatus" class="status-line" :class="messageStatusClass">{{ messageStatus }}</p>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import { useTriageStore } from '@/stores/triage'
-import type { FollowUpRecord } from '@/types'
+import { api } from '@/services/api'
+import type { FollowUpRecord, Message } from '@/types'
 
 const triageStore = useTriageStore()
 const { locale, t } = useI18n()
@@ -112,6 +160,12 @@ const { locale, t } = useI18n()
 const saving = ref(false)
 const statusMessage = ref('')
 const statusType = ref<'success' | 'error'>('success')
+const messages = ref<Message[]>([])
+const loadingMessages = ref(false)
+const sendingMessage = ref(false)
+const messageDraft = ref('')
+const messageStatus = ref('')
+const messageStatusType = ref<'success' | 'error'>('success')
 
 const form = reactive({
   temperatureC: null as number | null,
@@ -125,6 +179,10 @@ const followUps = computed<FollowUpRecord[]>(() => triageStore.activeSession?.fo
 const statusClass = computed(() => ({
   'status--success': statusType.value === 'success',
   'status--error': statusType.value === 'error'
+}))
+const messageStatusClass = computed(() => ({
+  'status--success': messageStatusType.value === 'success',
+  'status--error': messageStatusType.value === 'error'
 }))
 
 const trendClass = computed(() => {
@@ -172,6 +230,27 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString(locale.value === 'zh' ? 'zh-CN' : 'en-US')
 }
 
+async function loadMessages() {
+  const sessionId = triageStore.activeSession?.id
+  if (!sessionId) {
+    messages.value = []
+    return
+  }
+
+  loadingMessages.value = true
+
+  try {
+    const response = await api.getSessionMessages(sessionId)
+    messages.value = response.messages
+  } catch {
+    messages.value = []
+    messageStatus.value = t('followupLog.messageReloadFailed')
+    messageStatusType.value = 'error'
+  } finally {
+    loadingMessages.value = false
+  }
+}
+
 async function handleSave() {
   if (!triageStore.activeSession) return
 
@@ -207,6 +286,7 @@ async function handleReload() {
   try {
     const session = await triageStore.loadSession(triageStore.activeSession.id)
     triageStore.setActiveSession(session)
+    await loadMessages()
     statusMessage.value = t('followupLog.reloaded')
     statusType.value = 'success'
   } catch {
@@ -214,6 +294,36 @@ async function handleReload() {
     statusType.value = 'error'
   }
 }
+
+async function handleSendMessage() {
+  const sessionId = triageStore.activeSession?.id
+  if (!sessionId || !messageDraft.value.trim() || sendingMessage.value) return
+
+  sendingMessage.value = true
+  messageStatus.value = ''
+
+  try {
+    const response = await api.sendSessionMessage(sessionId, messageDraft.value.trim())
+    messages.value = [...messages.value, response.message]
+    messageDraft.value = ''
+    messageStatus.value = t('followupLog.messageSent')
+    messageStatusType.value = 'success'
+  } catch {
+    messageStatus.value = t('followupLog.messageSendFailed')
+    messageStatusType.value = 'error'
+  } finally {
+    sendingMessage.value = false
+  }
+}
+
+watch(
+  () => triageStore.activeSession?.id ?? null,
+  () => {
+    messageStatus.value = ''
+    loadMessages()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -417,5 +527,111 @@ async function handleReload() {
   width: 40px;
   height: 40px;
   color: var(--c-border);
+}
+
+.conversation-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+}
+
+.conversation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.conversation-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.conversation-desc {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--c-text-muted);
+}
+
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+.conversation-empty {
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  background: var(--c-bg);
+  color: var(--c-text-muted);
+  text-align: center;
+  font-size: var(--text-sm);
+}
+
+.conversation-message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: min(100%, 36rem);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+}
+
+.conversation-message--patient {
+  align-self: flex-end;
+  background: var(--c-primary-50);
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+.conversation-message--doctor {
+  align-self: flex-start;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border-light);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.conversation-message--system {
+  align-self: center;
+  background: var(--warning-bg);
+  color: var(--c-text-secondary);
+}
+
+.conversation-sender {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--c-text-secondary);
+}
+
+.conversation-content {
+  margin: 0;
+  color: var(--c-text);
+  line-height: var(--leading-relaxed);
+}
+
+.conversation-time {
+  font-size: var(--text-xs);
+  color: var(--c-text-muted);
+}
+
+.conversation-form {
+  display: flex;
+  gap: var(--space-3);
+}
+
+@media (max-width: 640px) {
+  .conversation-header,
+  .conversation-form,
+  .form-actions,
+  .timeline-header {
+    flex-direction: column;
+  }
 }
 </style>

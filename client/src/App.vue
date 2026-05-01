@@ -11,14 +11,20 @@
 </template>
 
 <script setup lang="ts">
-import { watchEffect } from 'vue'
+import { watchEffect, onMounted } from 'vue'
 import { useI18n } from '@/composables/useI18n'
+import { useAuthStore } from '@/stores/auth'
 import NavBar from '@/components/NavBar.vue'
 
 const { locale, t } = useI18n()
+const authStore = useAuthStore()
 
 watchEffect(() => {
   document.documentElement.lang = locale.value
+})
+
+onMounted(() => {
+  authStore.ensureInitialized()
 })
 </script>
 

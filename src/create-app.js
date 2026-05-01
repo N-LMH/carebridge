@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -182,12 +183,144 @@ export function createApp({
 
   app.use(express.json());
 
+  // In-memory session token store
+  const sessions = new Map();
+
+  function createToken(userId) {
+    const token = crypto.randomBytes(32).toString("hex");
+    sessions.set(token, { userId, createdAt: Date.now() });
+    return token;
+  }
+
+  function getUserFromToken(req) {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith("Bearer ")) return null;
+    const token = auth.slice(7);
+    const session = sessions.get(token);
+    if (!session) return null;
+    return storage.getUserById(session.userId);
+  }
+
+  function requireAuth(role) {
+    return (req, res, next) => {
+      const user = getUserFromToken(req);
+      if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      if (role && user.role !== role) {
+        return res.status(403).json({ error: "Insufficient permissions" });
+      }
+      req.user = user;
+      next();
+    };
+  }
+
   const distDir = path.resolve(__dirname, "../dist");
 
   app.use(express.static(distDir));
 
   app.get("/api/health", (_request, response) => {
     response.json({ status: "ok" });
+  });
+
+  // Auth endpoints
+  app.post("/api/auth/login", (request, response) => {
+    const { username, password } = request.body;
+    if (!username || !password) {
+      return response.status(400).json({ error: "Username and password are required" });
+    }
+    const user = storage.authenticateUser(username, password);
+    if (!user) {
+      return response.status(401).json({ error: "Invalid credentials" });
+    }
+    const token = createToken(user.id);
+    return response.json({ token, user });
+  });
+
+  app.get("/api/auth/me", (request, response) => {
+    const user = getUserFromToken(request);
+    if (!user) {
+      return response.status(401).json({ error: "Not authenticated" });
+    }
+    return response.json({ user });
+  });
+
+  // Doctor API endpoints
+  app.get("/api/doctor/sessions", requireAuth("doctor"), (request, response) => {
+    const q = request.query.q;
+    const riskLevel = request.query.riskLevel;
+    const sort = request.query.sort;
+
+    const sessions = storage.getDoctorSessions({ q, riskLevel, sort });
+
+    return response.json({
+      sessions: sessions.map((session) => ({
+        id: session.id,
+        createdAt: session.createdAt,
+        patientName: session.intake.patientName || "Unnamed patient",
+        age: session.intake.age,
+        gender: session.intake.gender,
+        region: session.intake.region || "Unknown region",
+        symptoms: session.assessment.symptoms,
+        actionLabel: session.assessment.actionLabel,
+        riskLevel: session.assessment.riskLevel,
+        suggestedDepartment: session.assessment.suggestedDepartment,
+        followUpCount: session.followUps?.length || 0,
+        redFlags: session.assessment.redFlags || [],
+        adminStatus: session.adminStatus || 'new',
+        lastMessage: session.lastMessage,
+        messageCount: session.messageCount
+      }))
+    });
+  });
+
+  app.get("/api/doctor/sessions/:sessionId", requireAuth("doctor"), (request, response) => {
+    const session = storage.getDoctorSessionDetail(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    return response.json({ session });
+  });
+
+  app.get("/api/doctor/sessions/:sessionId/messages", requireAuth("doctor"), (request, response) => {
+    const messages = storage.getMessages(request.params.sessionId);
+    return response.json({ messages });
+  });
+
+  app.post("/api/doctor/sessions/:sessionId/messages", requireAuth("doctor"), (request, response) => {
+    const { content } = request.body;
+    if (!content || !String(content).trim()) {
+      return response.status(400).json({ error: "Message content is required" });
+    }
+    const session = storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    const message = storage.addMessage(request.params.sessionId, "doctor", request.user.id, String(content).trim());
+    return response.status(201).json({ message });
+  });
+
+  // Patient-facing message endpoint (no auth required — identified by session)
+  app.post("/api/sessions/:sessionId/messages", (request, response) => {
+    const { content } = request.body;
+    if (!content || !String(content).trim()) {
+      return response.status(400).json({ error: "Message content is required" });
+    }
+    const session = storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    const message = storage.addMessage(request.params.sessionId, "patient", null, String(content).trim());
+    return response.status(201).json({ message });
+  });
+
+  app.get("/api/sessions/:sessionId/messages", (request, response) => {
+    const session = storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    const messages = storage.getMessages(request.params.sessionId);
+    return response.json({ messages });
   });
 
   app.get("/api/sessions", async (request, response) => {
@@ -289,7 +422,7 @@ export function createApp({
   });
 
   // Admin API endpoints
-  app.get("/api/admin/sessions", async (request, response) => {
+  app.get("/api/admin/sessions", requireAuth("admin"), async (request, response) => {
     const q = request.query.q;
     const riskLevel = request.query.riskLevel;
     const adminStatus = request.query.adminStatus;
@@ -332,7 +465,7 @@ export function createApp({
     });
   });
 
-  app.get("/api/admin/sessions/:sessionId", async (request, response) => {
+  app.get("/api/admin/sessions/:sessionId", requireAuth("admin"), async (request, response) => {
     const session = await storage.getSession(request.params.sessionId);
     if (!session) {
       return response.status(404).json({ error: "Session not found" });
@@ -340,7 +473,7 @@ export function createApp({
     return response.json({ session });
   });
 
-  app.patch("/api/admin/sessions/:sessionId", async (request, response) => {
+  app.patch("/api/admin/sessions/:sessionId", requireAuth("admin"), async (request, response) => {
     const { adminNote, adminStatus, tags } = request.body;
     const session = await storage.updateAdminFields(request.params.sessionId, { adminNote, adminStatus, tags });
     if (!session) {
@@ -349,7 +482,7 @@ export function createApp({
     return response.json({ session });
   });
 
-  app.get("/api/admin/stats", async (_request, response) => {
+  app.get("/api/admin/stats", requireAuth("admin"), async (_request, response) => {
     const stats = await storage.getStats();
     return response.json(stats);
   });
