@@ -52,21 +52,50 @@
       <p v-if="statusMessage" class="status-line" :class="statusClass">{{ statusMessage }}</p>
     </form>
 
-    <div v-if="followUps.length" class="timeline">
-      <ol>
-        <li v-for="record in followUps" :key="record.id">
-          <strong>{{ formatDate(record.createdAt) }}</strong>
-          <p>
-            <template v-if="record.temperatureC != null">{{ t('followupLog.tempPrefix') }} {{ record.temperatureC }}°C · </template>
-            <template v-if="record.symptomChange">{{ t('followupLog.changePrefix') }}：{{ record.symptomChange }} · </template>
-            <template v-if="record.medicationTaken">{{ t('followupLog.medicationPrefix') }}：{{ record.medicationTaken }} · </template>
-            <template v-if="record.note">{{ t('followupLog.notePrefix') }}：{{ record.note }}</template>
-          </p>
+    <div v-if="followUps.length" class="timeline-section">
+      <div class="timeline-header">
+        <h4 class="timeline-title">{{ t('followupLog.timelineTitle') }}</h4>
+        <div class="timeline-meta">
+          <span class="timeline-count">{{ t('followupLog.entryCount', { count: followUps.length }) }}</span>
+          <span class="trend-badge" :class="trendClass">{{ trendLabel }}</span>
+        </div>
+      </div>
+
+      <ol class="timeline">
+        <li v-for="(record, idx) in followUps" :key="record.id" class="timeline-entry" :class="{ latest: idx === 0 }">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-top">
+              <strong class="timeline-time">{{ formatDate(record.createdAt) }}</strong>
+              <span v-if="idx === 0" class="latest-badge">{{ t('followupLog.latestEntry') }}</span>
+            </div>
+            <div class="timeline-body">
+              <span v-if="record.temperatureC != null" class="timeline-item">
+                <span class="timeline-item-label">{{ t('followupLog.tempPrefix') }}</span>
+                <span class="timeline-item-value" :class="tempClass(record.temperatureC)">{{ record.temperatureC }}°C</span>
+              </span>
+              <span v-if="record.symptomChange" class="timeline-item">
+                <span class="timeline-item-label">{{ t('followupLog.changePrefix') }}</span>
+                <span class="timeline-item-value">{{ record.symptomChange }}</span>
+              </span>
+              <span v-if="record.medicationTaken" class="timeline-item">
+                <span class="timeline-item-label">{{ t('followupLog.medicationPrefix') }}</span>
+                <span class="timeline-item-value">{{ record.medicationTaken }}</span>
+              </span>
+              <span v-if="record.note" class="timeline-item">
+                <span class="timeline-item-label">{{ t('followupLog.notePrefix') }}</span>
+                <span class="timeline-item-value">{{ record.note }}</span>
+              </span>
+            </div>
+          </div>
         </li>
       </ol>
     </div>
     <div v-else class="empty-state">
-      {{ t('followupLog.empty') }}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+        <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>
+      </svg>
+      <p>{{ t('followupLog.empty') }}</p>
     </div>
   </div>
 </template>
@@ -98,6 +127,46 @@ const statusClass = computed(() => ({
   'status--error': statusType.value === 'error'
 }))
 
+const trendClass = computed(() => {
+  if (followUps.value.length < 2) return 'trend-unknown'
+  const trend = detectTrend()
+  return `trend-${trend}`
+})
+
+const trendLabel = computed(() => {
+  if (followUps.value.length < 2) return t('followupLog.trendUnknown')
+  const trend = detectTrend()
+  return t(`followupLog.trend${trend.charAt(0).toUpperCase() + trend.slice(1)}`)
+})
+
+function detectTrend(): string {
+  const entries = followUps.value
+  if (entries.length < 2) return 'unknown'
+
+  const recent = entries[0]
+  const previous = entries[1]
+
+  if (recent.temperatureC != null && previous.temperatureC != null) {
+    if (recent.temperatureC < previous.temperatureC - 0.3) return 'improving'
+    if (recent.temperatureC > previous.temperatureC + 0.3) return 'worsening'
+  }
+
+  const recentChange = (recent.symptomChange || '').toLowerCase()
+  const improvingWords = ['减轻', '好转', '缓解', 'better', 'improving', 'less', '减轻']
+  const worseningWords = ['加重', '恶化', '严重', 'worse', 'worsening', 'more']
+
+  if (improvingWords.some(w => recentChange.includes(w))) return 'improving'
+  if (worseningWords.some(w => recentChange.includes(w))) return 'worsening'
+
+  return 'stable'
+}
+
+function tempClass(temp: number): string {
+  if (temp >= 39) return 'temp-high'
+  if (temp >= 37.5) return 'temp-elevated'
+  return 'temp-normal'
+}
+
 function formatDate(dateStr: string): string {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleString(locale.value === 'zh' ? 'zh-CN' : 'en-US')
@@ -120,7 +189,6 @@ async function handleSave() {
     statusMessage.value = t('followupLog.saved')
     statusType.value = 'success'
 
-    // 重置表单
     form.temperatureC = null
     form.symptomChange = ''
     form.medicationTaken = ''
@@ -171,44 +239,183 @@ async function handleReload() {
   text-align: center;
 }
 
-.status-line.status--success {
-  color: var(--c-success);
-}
+.status-line.status--success { color: var(--c-success); }
+.status-line.status--error { color: var(--c-error); }
 
-.status-line.status--error {
-  color: var(--c-error);
-}
-
-.timeline ol {
-  list-style: none;
+.timeline-section {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-.timeline li {
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.timeline-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--c-text);
+}
+
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.timeline-count {
+  font-size: var(--text-xs);
+  color: var(--c-text-muted);
+}
+
+.trend-badge {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.trend-improving {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--c-success);
+}
+
+.trend-stable {
+  background: var(--c-bg);
+  color: var(--c-text-muted);
+}
+
+.trend-worsening {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--c-error);
+}
+
+.trend-unknown {
+  background: var(--c-bg);
+  color: var(--c-text-muted);
+}
+
+.timeline {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  position: relative;
+  padding-left: var(--space-6);
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--c-border-light);
+}
+
+.timeline-entry {
+  position: relative;
   padding: var(--space-4);
   background: var(--c-bg);
   border-radius: var(--radius-md);
-  border-left: 3px solid var(--c-primary);
+  border-left: 3px solid var(--c-border-light);
+  transition: all var(--transition-fast);
 }
 
-.timeline strong {
-  display: block;
+.timeline-entry.latest {
+  border-left-color: var(--c-primary);
+  background: var(--c-primary-50);
+}
+
+.timeline-dot {
+  position: absolute;
+  left: calc(-1 * var(--space-6) - 1px);
+  top: var(--space-5);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c-border);
+  border: 2px solid var(--c-surface);
+}
+
+.timeline-entry.latest .timeline-dot {
+  background: var(--c-primary);
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.timeline-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.timeline-time {
   font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--c-text-muted);
-  margin-bottom: var(--space-2);
 }
 
-.timeline p {
+.latest-badge {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--c-primary);
+  padding: 1px var(--space-2);
+  background: var(--c-primary-50);
+  border-radius: var(--radius-full);
+}
+
+.timeline-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.timeline-item-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--c-text-muted);
+}
+
+.timeline-item-value {
   font-size: var(--text-sm);
   color: var(--c-text-secondary);
 }
 
+.temp-high { color: var(--c-error); font-weight: 600; }
+.temp-elevated { color: var(--c-warning); font-weight: 600; }
+.temp-normal { color: var(--c-success); }
+
 .empty-state {
   text-align: center;
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-10) var(--space-4);
   color: var(--c-text-muted);
   font-size: var(--text-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.empty-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--c-border);
 }
 </style>

@@ -109,6 +109,30 @@ export const messages = {
     result: {
       zh: '结果',
       en: 'Result'
+    },
+    intakeDesc: {
+      zh: '填写患者基本信息与症状',
+      en: 'Fill in patient info and symptoms'
+    },
+    followUpDesc: {
+      zh: '补充评估所需的额外信息',
+      en: 'Provide additional details for assessment'
+    },
+    resultDesc: {
+      zh: '查看风险评估与就诊建议',
+      en: 'Review risk level and care guidance'
+    },
+    currentStage: {
+      zh: '当前阶段',
+      en: 'Current Stage'
+    },
+    completed: {
+      zh: '已完成',
+      en: 'Completed'
+    },
+    pending: {
+      zh: '待完成',
+      en: 'Pending'
     }
   },
   intake: {
@@ -239,6 +263,58 @@ export const messages = {
     statusPresetLoaded: {
       zh: '已加载预设：{title}',
       en: 'Preset loaded: {title}'
+    },
+    symptomCategories: {
+      zh: '常见症状类别',
+      en: 'Common Symptom Categories'
+    },
+    catRespiratory: {
+      zh: '呼吸道',
+      en: 'Respiratory'
+    },
+    catRespiratoryExamples: {
+      zh: '发热、咳嗽、咽痛、呼吸困难',
+      en: 'fever, cough, sore throat, shortness of breath'
+    },
+    catDigestive: {
+      zh: '消化系统',
+      en: 'Digestive'
+    },
+    catDigestiveExamples: {
+      zh: '腹痛、腹泻、呕吐',
+      en: 'abdominal pain, diarrhea, vomiting'
+    },
+    catPain: {
+      zh: '疼痛',
+      en: 'Pain'
+    },
+    catPainExamples: {
+      zh: '头痛、胸痛、胸闷',
+      en: 'headache, chest pain, chest tightness'
+    },
+    catGeneral: {
+      zh: '全身',
+      en: 'General'
+    },
+    catGeneralExamples: {
+      zh: '头晕、皮疹、出血',
+      en: 'dizziness, rash, bleeding'
+    },
+    sectionComplete: {
+      zh: '已填写',
+      en: 'Complete'
+    },
+    sectionIncomplete: {
+      zh: '待填写',
+      en: 'Incomplete'
+    },
+    careJourneyTitle: {
+      zh: '就诊准备',
+      en: 'Care Preparation'
+    },
+    careJourneyDesc: {
+      zh: '了解当前阶段和下一步',
+      en: 'Understand your stage and next steps'
     }
   },
   gender: {
@@ -323,6 +399,106 @@ export const messages = {
     stepsTitle: {
       zh: '即时建议',
       en: 'Immediate Steps'
+    },
+    urgencyEmergency: {
+      zh: '紧急',
+      en: 'Emergency'
+    },
+    urgencyUrgent: {
+      zh: '较紧急',
+      en: 'Urgent'
+    },
+    urgencySoon: {
+      zh: '建议就诊',
+      en: 'Recommended'
+    },
+    urgencyObserve: {
+      zh: '居家观察',
+      en: 'Observe'
+    },
+    careTiming: {
+      zh: '建议就诊时间',
+      en: 'Recommended Timing'
+    },
+    timingImmediate: {
+      zh: '立即前往急诊',
+      en: 'Go to ER immediately'
+    },
+    timing24h: {
+      zh: '24 小时内就诊',
+      en: 'Visit within 24 hours'
+    },
+    timingSchedule: {
+      zh: '预约门诊即可',
+      en: 'Schedule an outpatient visit'
+    },
+    timingObserve: {
+      zh: '居家观察 24-48 小时',
+      en: 'Observe at home for 24-48 hours'
+    },
+    whatWeKnow: {
+      zh: '已知信息',
+      en: 'What We Know'
+    },
+    whatToDoNext: {
+      zh: '下一步行动',
+      en: 'What To Do Next'
+    },
+    preparationChecklist: {
+      zh: '就诊准备清单',
+      en: 'Visit Preparation Checklist'
+    },
+    checklistItems: {
+      zh: '准备清单项目',
+      en: 'Checklist items'
+    },
+    bringTitle: {
+      zh: '就诊携带物品',
+      en: 'What to Bring'
+    },
+    bringId: {
+      zh: '身份证 / 医保卡',
+      en: 'ID card / insurance card'
+    },
+    bringMedHistory: {
+      zh: '既往病历和检查报告',
+      en: 'Previous medical records and test results'
+    },
+    bringMedList: {
+      zh: '当前用药清单',
+      en: 'List of current medications'
+    },
+    bringSymptomNotes: {
+      zh: '症状记录（时间、变化）',
+      en: 'Symptom notes (timing, changes)'
+    },
+    bringTempLog: {
+      zh: '体温记录',
+      en: 'Temperature log'
+    },
+    warningSignsTitle: {
+      zh: '需要立即就医的危险信号',
+      en: 'Warning Signs — Seek Immediate Care'
+    },
+    warningBreathing: {
+      zh: '呼吸困难明显加重',
+      en: 'Breathing difficulty significantly worsens'
+    },
+    warningChestPain: {
+      zh: '持续或加重的胸痛',
+      en: 'Persistent or worsening chest pain'
+    },
+    warningConsciousness: {
+      zh: '意识模糊或嗜睡',
+      en: 'Confusion or drowsiness'
+    },
+    warningHighFever: {
+      zh: '持续高热不退（≥39°C）',
+      en: 'Persistent high fever (≥39°C)'
+    },
+    warningBleeding: {
+      zh: '不明原因出血',
+      en: 'Unexplained bleeding'
     }
   },
   summary: {
@@ -421,6 +597,38 @@ export const messages = {
     exportDisclaimer: {
       zh: '免责声明：',
       en: 'Disclaimer:'
+    },
+    whatToTellDoctor: {
+      zh: '就诊时请告知医生',
+      en: 'Tell Your Doctor During the Visit'
+    },
+    tellSymptomStart: {
+      zh: '症状最早出现的时间',
+      en: 'When symptoms first appeared'
+    },
+    tellSymptomChange: {
+      zh: '症状是如何变化的',
+      en: 'How symptoms have changed'
+    },
+    tellWhatTried: {
+      zh: '已尝试的处理方式和效果',
+      en: 'What remedies were tried and their effect'
+    },
+    tellWorsening: {
+      zh: '什么情况下症状会加重',
+      en: 'What makes symptoms worse'
+    },
+    tellAllergies: {
+      zh: '所有已知过敏史',
+      en: 'All known allergies'
+    },
+    handoffBrief: {
+      zh: '交接摘要',
+      en: 'Handoff Brief'
+    },
+    patientSnapshot: {
+      zh: '患者概况',
+      en: 'Patient Snapshot'
     }
   },
   followupLog: {
@@ -499,6 +707,34 @@ export const messages = {
     notePrefix: {
       zh: '备注',
       en: 'Note'
+    },
+    timelineTitle: {
+      zh: '随访时间线',
+      en: 'Follow-up Timeline'
+    },
+    trendImproving: {
+      zh: '好转中',
+      en: 'Improving'
+    },
+    trendStable: {
+      zh: '稳定',
+      en: 'Stable'
+    },
+    trendWorsening: {
+      zh: '加重中',
+      en: 'Worsening'
+    },
+    trendUnknown: {
+      zh: '待观察',
+      en: 'Monitoring'
+    },
+    entryCount: {
+      zh: '共 {count} 条记录',
+      en: '{count} records total'
+    },
+    latestEntry: {
+      zh: '最近一次',
+      en: 'Latest'
     }
   },
   sidebar: {
@@ -689,6 +925,170 @@ export const messages = {
     followUpHistory: {
       zh: '随访记录',
       en: 'Follow-up History'
+    },
+    dashboardTitle: {
+      zh: '运营概览',
+      en: 'Operations Overview'
+    },
+    totalSessions: {
+      zh: '总病例数',
+      en: 'Total Cases'
+    },
+    highRiskRecent: {
+      zh: '近24h高风险',
+      en: 'High Risk (24h)'
+    },
+    riskDistribution: {
+      zh: '风险分布',
+      en: 'Risk Distribution'
+    },
+    statusDistribution: {
+      zh: '状态分布',
+      en: 'Status Distribution'
+    },
+    urgentCases: {
+      zh: '需关注病例',
+      en: 'Cases Needing Attention'
+    },
+    filterByRisk: {
+      zh: '按风险筛选',
+      en: 'Filter by Risk'
+    },
+    filterByStatus: {
+      zh: '按状态筛选',
+      en: 'Filter by Status'
+    },
+    filterByTime: {
+      zh: '按时间筛选',
+      en: 'Filter by Time'
+    },
+    sortBy: {
+      zh: '排序方式',
+      en: 'Sort by'
+    },
+    sortDate: {
+      zh: '最新优先',
+      en: 'Newest First'
+    },
+    sortRisk: {
+      zh: '风险优先',
+      en: 'Highest Risk First'
+    },
+    sortFollowUps: {
+      zh: '随访最多',
+      en: 'Most Follow-ups'
+    },
+    allRisks: {
+      zh: '全部风险',
+      en: 'All Risks'
+    },
+    allStatuses: {
+      zh: '全部状态',
+      en: 'All Statuses'
+    },
+    allTime: {
+      zh: '全部时间',
+      en: 'All Time'
+    },
+    last24h: {
+      zh: '近24小时',
+      en: 'Last 24 hours'
+    },
+    last7d: {
+      zh: '近7天',
+      en: 'Last 7 days'
+    },
+    last30d: {
+      zh: '近30天',
+      en: 'Last 30 days'
+    },
+    statusNew: {
+      zh: '新病例',
+      en: 'New'
+    },
+    statusReviewed: {
+      zh: '已审阅',
+      en: 'Reviewed'
+    },
+    statusUrgent: {
+      zh: '需紧急处理',
+      en: 'Urgent'
+    },
+    statusResolved: {
+      zh: '已处理',
+      en: 'Resolved'
+    },
+    statusArchived: {
+      zh: '已归档',
+      en: 'Archived'
+    },
+    adminNote: {
+      zh: '管理员备注',
+      en: 'Admin Note'
+    },
+    adminNotePlaceholder: {
+      zh: '添加内部备注...',
+      en: 'Add internal note...'
+    },
+    adminStatus: {
+      zh: '病例状态',
+      en: 'Case Status'
+    },
+    sessionTags: {
+      zh: '标签',
+      en: 'Tags'
+    },
+    addTag: {
+      zh: '添加标签',
+      en: 'Add Tag'
+    },
+    saveNote: {
+      zh: '保存备注',
+      en: 'Save Note'
+    },
+    noteSaved: {
+      zh: '备注已保存',
+      en: 'Note saved'
+    },
+    statusUpdated: {
+      zh: '状态已更新',
+      en: 'Status updated'
+    },
+    filtersActive: {
+      zh: '{count} 个筛选条件已启用',
+      en: '{count} filters active'
+    },
+    clearFilters: {
+      zh: '清除筛选',
+      en: 'Clear Filters'
+    },
+    noHighRisk: {
+      zh: '近24小时无高风险病例',
+      en: 'No high-risk cases in the last 24 hours'
+    },
+    sessionTimeline: {
+      zh: '病例时间线',
+      en: 'Case Timeline'
+    },
+    intakeTime: {
+      zh: '录入时间',
+      en: 'Intake Time'
+    },
+    lastFollowUp: {
+      zh: '最近随访',
+      en: 'Last Follow-up'
+    },
+    caseAge: {
+      zh: '病例年龄',
+      en: 'Case Age'
+    },
+    hoursAgo: {
+      zh: '{hours} 小时前',
+      en: '{hours}h ago'
+    },
+    daysAgo: {
+      zh: '{days} 天前',
+      en: '{days}d ago'
     }
   }
 } as const

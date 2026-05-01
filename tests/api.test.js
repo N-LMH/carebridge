@@ -408,4 +408,181 @@ describe("CareBridge API", () => {
       } catch {}
     }
   });
+
+  it("admin API updates session admin fields via PATCH", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const triage = await client.post("/api/triage").send({
+        patientName: "Patch Test",
+        age: 40,
+        gender: "male",
+        region: "city",
+        symptoms: ["headache"],
+        symptomNotes: "mild headache",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.0,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      expect(triage.status).toBe(201);
+
+      const sessionId = triage.body.session.id;
+
+      const patchRes = await client
+        .patch(`/api/admin/sessions/${sessionId}`)
+        .send({
+          adminNote: "Reviewed by admin",
+          adminStatus: "reviewed",
+          tags: ["follow-up-needed"]
+        });
+
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.session.adminNote).toBe("Reviewed by admin");
+      expect(patchRes.body.session.adminStatus).toBe("reviewed");
+      expect(patchRes.body.session.tags).toEqual(["follow-up-needed"]);
+
+      const getRes = await client.get(`/api/admin/sessions/${sessionId}`);
+      expect(getRes.body.session.adminNote).toBe("Reviewed by admin");
+      expect(getRes.body.session.adminStatus).toBe("reviewed");
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("admin API returns stats with risk distribution", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      await client.post("/api/triage").send({
+        patientName: "Stats One",
+        age: 30,
+        gender: "female",
+        region: "city",
+        symptoms: ["fever"],
+        symptomNotes: "fever",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.5,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      await client.post("/api/triage").send({
+        patientName: "Stats Two",
+        age: 60,
+        gender: "male",
+        region: "village",
+        symptoms: ["fever", "cough", "chest tightness"],
+        symptomNotes: "severe symptoms",
+        symptomDays: 3,
+        severity: "severe",
+        breathingDifficulty: "moderate",
+        symptomsWorsening: true,
+        maxTemperatureC: 39.2,
+        chillsOrSweats: "chills",
+        chronicConditions: ["diabetes"],
+        medications: "none",
+        allergies: "none",
+        chestPain: true,
+        coughType: "productive",
+        nightSymptoms: "yes",
+        painRadiation: "none",
+        activityRelation: "both"
+      });
+
+      const statsRes = await client.get("/api/admin/stats");
+
+      expect(statsRes.status).toBe(200);
+      expect(statsRes.body.total).toBe(2);
+      expect(statsRes.body.riskDistribution).toBeDefined();
+      expect(typeof statsRes.body.riskDistribution["Level 1"]).toBe("number");
+      expect(typeof statsRes.body.riskDistribution["Level 2"]).toBe("number");
+      expect(typeof statsRes.body.highRiskRecent).toBe("number");
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("admin API filters sessions by risk level", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      await client.post("/api/triage").send({
+        patientName: "Filter Mild",
+        age: 25,
+        gender: "male",
+        region: "city",
+        symptoms: ["sore throat"],
+        symptomNotes: "mild",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.0,
+        chillsOrSweats: "none",
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      await client.post("/api/triage").send({
+        patientName: "Filter Severe",
+        age: 70,
+        gender: "female",
+        region: "village",
+        symptoms: ["fever", "cough", "chest tightness"],
+        symptomNotes: "severe",
+        symptomDays: 5,
+        severity: "severe",
+        breathingDifficulty: "severe",
+        symptomsWorsening: true,
+        maxTemperatureC: 39.5,
+        chillsOrSweats: "both",
+        chronicConditions: ["hypertension"],
+        medications: "none",
+        allergies: "none",
+        chestPain: true,
+        coughType: "productive",
+        nightSymptoms: "yes",
+        painRadiation: "none",
+        activityRelation: "both",
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const filtered = await client.get("/api/admin/sessions?riskLevel=Level 1");
+
+      expect(filtered.status).toBe(200);
+      expect(filtered.body.sessions.length).toBeGreaterThanOrEqual(1);
+      filtered.body.sessions.forEach((s) => {
+        expect(s.riskLevel).toBe("Level 1");
+      });
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
 });

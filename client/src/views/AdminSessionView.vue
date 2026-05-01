@@ -19,9 +19,39 @@
             {{ session.intake.gender ? `· ${genderLabel(session.intake.gender)}` : '' }}
             {{ session.intake.region ? `· ${session.intake.region}` : '' }}
           </p>
+          <div class="detail-header-tags">
+            <span v-for="tag in sessionTags" :key="tag" class="tag-chip">{{ tag }}</span>
+          </div>
         </div>
-        <span class="risk-badge" :class="riskClass">{{ session.assessment.riskLevel }}</span>
+        <div class="detail-header-right">
+          <span class="risk-badge" :class="riskClass">{{ session.assessment.riskLevel }}</span>
+          <select
+            v-model="adminStatus"
+            class="field-select status-select"
+            @change="updateStatus"
+          >
+            <option value="new">{{ t('admin.statusNew') }}</option>
+            <option value="reviewed">{{ t('admin.statusReviewed') }}</option>
+            <option value="urgent">{{ t('admin.statusUrgent') }}</option>
+            <option value="resolved">{{ t('admin.statusResolved') }}</option>
+            <option value="archived">{{ t('admin.statusArchived') }}</option>
+          </select>
+        </div>
       </header>
+
+      <div class="admin-note-section">
+        <h3 class="admin-note-title">{{ t('admin.adminNote') }}</h3>
+        <div class="admin-note-input-row">
+          <textarea
+            v-model="adminNote"
+            class="field-textarea admin-note-textarea"
+            rows="2"
+            :placeholder="t('admin.adminNotePlaceholder')"
+          ></textarea>
+          <button class="btn btn-primary btn-sm" @click="saveNote">{{ t('admin.saveNote') }}</button>
+        </div>
+        <p v-if="noteStatus" class="note-status">{{ noteStatus }}</p>
+      </div>
 
       <div class="detail-grid">
         <div class="detail-card">
@@ -173,19 +203,25 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
 import { localizeSession } from '@/i18n/medical'
-import type { Session } from '@/types'
+import { api } from '@/services/api'
+import type { Session, AdminStatus } from '@/types'
 
 const { locale, t } = useI18n()
 const route = useRoute()
 
 const rawSession = ref<Session | null>(null)
 const loading = ref(true)
+const adminNote = ref('')
+const adminStatus = ref<AdminStatus>('new')
+const noteStatus = ref('')
 
 const session = computed(() => {
   return rawSession.value
     ? localizeSession(rawSession.value, locale.value)
     : null
 })
+
+const sessionTags = computed(() => rawSession.value?.tags || [])
 
 const riskClass = computed(() => {
   const level = session.value?.assessment?.riskLevel
@@ -208,6 +244,26 @@ function formatDate(iso: string) {
   return d.toLocaleDateString(locale.value === 'zh' ? 'zh-CN' : 'en-US') + ' ' + d.toLocaleTimeString(locale.value === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
+async function saveNote() {
+  const id = route.params.id as string
+  try {
+    await api.updateAdminSession(id, { adminNote: adminNote.value })
+    noteStatus.value = t('admin.noteSaved')
+    setTimeout(() => { noteStatus.value = '' }, 2000)
+  } catch {
+    noteStatus.value = 'Save failed'
+  }
+}
+
+async function updateStatus() {
+  const id = route.params.id as string
+  try {
+    await api.updateAdminSession(id, { adminStatus: adminStatus.value })
+  } catch {
+    // silent
+  }
+}
+
 onMounted(async () => {
   const id = route.params.id as string
   try {
@@ -215,6 +271,8 @@ onMounted(async () => {
     if (res.ok) {
       const data = await res.json()
       rawSession.value = data.session
+      adminNote.value = data.session.adminNote || ''
+      adminStatus.value = (data.session.adminStatus || 'new') as AdminStatus
     }
   } catch {
     rawSession.value = null
@@ -226,7 +284,7 @@ onMounted(async () => {
 
 <style scoped>
 .admin-detail {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: var(--space-6);
 }
@@ -245,9 +303,10 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-4);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-6);
   padding-bottom: var(--space-6);
   border-bottom: 2px solid var(--border);
+  flex-wrap: wrap;
 }
 
 .detail-name {
@@ -260,6 +319,30 @@ onMounted(async () => {
   font-size: var(--text-sm);
   color: var(--text-secondary);
   margin-top: var(--space-1);
+}
+
+.detail-header-tags {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.tag-chip {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  background: var(--gray-100);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.detail-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
 }
 
 .risk-badge {
@@ -275,6 +358,43 @@ onMounted(async () => {
 .risk-badge--2 { background: var(--level-2-bg); color: var(--level-2); border: 1px solid var(--level-2-border); }
 .risk-badge--3 { background: var(--level-3-bg); color: var(--level-3); border: 1px solid var(--level-3-border); }
 .risk-badge--4 { background: var(--level-4-bg); color: var(--level-4); border: 1px solid var(--level-4-border); }
+
+.status-select {
+  font-size: var(--text-sm);
+  min-width: 120px;
+}
+
+.admin-note-section {
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.admin-note-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: var(--space-3);
+}
+
+.admin-note-input-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.admin-note-textarea {
+  flex: 1;
+  font-size: var(--text-sm);
+}
+
+.note-status {
+  font-size: var(--text-xs);
+  color: var(--c-success);
+  margin-top: var(--space-2);
+}
 
 .detail-grid {
   display: flex;
@@ -415,6 +535,30 @@ onMounted(async () => {
   color: var(--text-secondary);
 }
 
+.red-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.red-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--c-error);
+}
+
+.red-flag svg {
+  width: 16px;
+  height: 16px;
+}
+
 @media (max-width: 640px) {
   .detail-field {
     flex-direction: column;
@@ -423,6 +567,15 @@ onMounted(async () => {
 
   .detail-field dt {
     min-width: auto;
+  }
+
+  .detail-header {
+    flex-direction: column;
+  }
+
+  .admin-note-input-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

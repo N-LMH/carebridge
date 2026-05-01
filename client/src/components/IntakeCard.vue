@@ -16,7 +16,12 @@
 
     <form @submit.prevent="handleSubmit" novalidate class="form">
       <div class="form-block">
-        <h3 class="form-block-title">{{ t('intake.sectionBasic') }}</h3>
+        <div class="form-block-header">
+          <h3 class="form-block-title">{{ t('intake.sectionBasic') }}</h3>
+          <span class="form-block-status" :class="{ complete: isBasicComplete }">
+            {{ isBasicComplete ? t('intake.sectionComplete') : t('intake.sectionIncomplete') }}
+          </span>
+        </div>
         <div class="grid grid-3">
           <label class="field">
             <span class="field-label">{{ t('intake.patientName') }}</span>
@@ -73,7 +78,29 @@
       <hr class="divider" />
 
       <div class="form-block">
-        <h3 class="form-block-title">{{ t('intake.sectionSymptoms') }}</h3>
+        <div class="form-block-header">
+          <h3 class="form-block-title">{{ t('intake.sectionSymptoms') }}</h3>
+          <span class="form-block-status" :class="{ complete: isSymptomsComplete }">
+            {{ isSymptomsComplete ? t('intake.sectionComplete') : t('intake.sectionIncomplete') }}
+          </span>
+        </div>
+
+        <div class="symptom-categories">
+          <span class="symptom-cat-label">{{ t('intake.symptomCategories') }}</span>
+          <div class="symptom-cat-list">
+            <button
+              v-for="cat in symptomCategories"
+              :key="cat.key"
+              type="button"
+              class="symptom-cat"
+              @click="addSymptomsFromCategory(cat.examples)"
+            >
+              <strong>{{ t(`intake.cat${cat.key}`) }}</strong>
+              <span>{{ t(`intake.cat${cat.key}Examples`) }}</span>
+            </button>
+          </div>
+        </div>
+
         <div class="grid">
           <label class="field">
             <span class="field-label field-label--req">{{ t('intake.symptoms') }}</span>
@@ -124,7 +151,12 @@
       <hr class="divider" />
 
       <div class="form-block">
-        <h3 class="form-block-title">{{ t('intake.sectionMedication') }}</h3>
+        <div class="form-block-header">
+          <h3 class="form-block-title">{{ t('intake.sectionMedication') }}</h3>
+          <span class="form-block-status" :class="{ complete: isMedicationComplete }">
+            {{ isMedicationComplete ? t('intake.sectionComplete') : t('intake.sectionIncomplete') }}
+          </span>
+        </div>
         <div class="grid grid-2">
           <label class="field">
             <span class="field-label">{{ t('intake.medications') }}</span>
@@ -200,6 +232,40 @@ const statusClass = computed(() => ({
   'status--error': statusType.value === 'error'
 }))
 
+const isBasicComplete = computed(() =>
+  !!(form.patientName && form.age && form.gender)
+)
+
+const isSymptomsComplete = computed(() => {
+  const symptoms = typeof form.symptoms === 'string'
+    ? (form.symptoms as string).trim()
+    : (form.symptoms as string[]).length > 0
+  return !!symptoms
+})
+
+const isMedicationComplete = computed(() =>
+  !!(form.medications || form.allergies)
+)
+
+const symptomCategories = [
+  { key: 'Respiratory', examples: 'fever, cough, sore throat, shortness of breath' },
+  { key: 'Digestive', examples: 'abdominal pain, diarrhea, vomiting' },
+  { key: 'Pain', examples: 'headache, chest pain, chest tightness' },
+  { key: 'General', examples: 'dizziness, rash, bleeding' }
+]
+
+function addSymptomsFromCategory(examples: string) {
+  const current = typeof form.symptoms === 'string'
+    ? (form.symptoms as unknown as string).trim()
+    : (form.symptoms as string[]).join(', ')
+
+  if (current) {
+    ;(form.symptoms as unknown as string) = current + ', ' + examples
+  } else {
+    ;(form.symptoms as unknown as string) = examples
+  }
+}
+
 watch(() => triageStore.draftPayload, (payload) => {
   if (payload && Object.keys(payload).length > 0) {
     Object.assign(form, payload)
@@ -270,3 +336,85 @@ function fillPreset(preset: DemoPreset) {
 
 defineExpose({ fillPreset })
 </script>
+
+<style scoped>
+.form-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.form-block-status {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--c-text-muted);
+  padding: var(--space-1) var(--space-3);
+  background: var(--c-bg);
+  border-radius: var(--radius-full);
+}
+
+.form-block-status.complete {
+  color: var(--c-success);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.symptom-categories {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: var(--c-bg);
+  border-radius: var(--radius-md);
+}
+
+.symptom-cat-label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--c-text-muted);
+  margin-bottom: var(--space-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.symptom-cat-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-2);
+}
+
+.symptom-cat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--c-surface);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+  border: 1px solid transparent;
+}
+
+.symptom-cat:hover {
+  border-color: var(--c-primary);
+  background: var(--c-primary-50);
+  transform: translateY(-1px);
+}
+
+.symptom-cat strong {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.symptom-cat span {
+  font-size: var(--text-xs);
+  color: var(--c-text-muted);
+}
+
+.form-block-title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--c-text);
+}
+</style>

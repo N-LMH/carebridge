@@ -122,6 +122,9 @@ export interface FollowUpRecord {
   note: string
 }
 
+// Admin status types
+export type AdminStatus = 'new' | 'reviewed' | 'urgent' | 'resolved' | 'archived'
+
 // 会话
 export interface Session {
   id: string
@@ -130,6 +133,9 @@ export interface Session {
   assessment: RiskAssessment
   summary: VisitSummary
   followUps: FollowUpRecord[]
+  adminNote?: string
+  adminStatus?: AdminStatus
+  tags?: string[]
 }
 
 // API 响应
@@ -166,6 +172,17 @@ export interface AdminSessionSummary extends SessionSummary {
   age: number | null
   gender: Gender
   redFlags: string[]
+  adminNote: string
+  adminStatus: AdminStatus
+  tags: string[]
+}
+
+// Admin stats
+export interface AdminStats {
+  total: number
+  riskDistribution: Record<string, number>
+  statusDistribution: Record<string, number>
+  highRiskRecent: number
 }
 
 // 预设

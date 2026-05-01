@@ -35,13 +35,28 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       patient_data TEXT NOT NULL,
       assessment_data TEXT NOT NULL,
       summary_data TEXT NOT NULL,
-      follow_ups TEXT NOT NULL DEFAULT '[]'
+      follow_ups TEXT NOT NULL DEFAULT '[]',
+      admin_note TEXT NOT NULL DEFAULT '',
+      admin_status TEXT NOT NULL DEFAULT 'new',
+      tags TEXT NOT NULL DEFAULT '[]'
     );
   `);
 
+  // Migration: add columns if they don't exist (for existing databases)
+  const columns = db.prepare("PRAGMA table_info(sessions)").all().map(c => c.name);
+  if (!columns.includes('admin_note')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN admin_note TEXT NOT NULL DEFAULT ''");
+  }
+  if (!columns.includes('admin_status')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN admin_status TEXT NOT NULL DEFAULT 'new'");
+  }
+  if (!columns.includes('tags')) {
+    db.exec("ALTER TABLE sessions ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'");
+  }
+
   const insertSession = db.prepare(`
-    INSERT OR IGNORE INTO sessions (id, created_at, patient_data, assessment_data, summary_data, follow_ups)
-    VALUES (@id, @createdAt, @patientData, @assessmentData, @summaryData, @followUps)
+    INSERT OR IGNORE INTO sessions (id, created_at, patient_data, assessment_data, summary_data, follow_ups, admin_note, admin_status, tags)
+    VALUES (@id, @createdAt, @patientData, @assessmentData, @summaryData, @followUps, @adminNote, @adminStatus, @tags)
   `);
 
   const selectSession = db.prepare(`SELECT * FROM sessions WHERE id = ?`);
@@ -63,7 +78,10 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       intake: JSON.parse(row.patient_data),
       assessment: JSON.parse(row.assessment_data),
       summary: JSON.parse(row.summary_data),
-      followUps: JSON.parse(row.follow_ups)
+      followUps: JSON.parse(row.follow_ups),
+      adminNote: row.admin_note || '',
+      adminStatus: row.admin_status || 'new',
+      tags: JSON.parse(row.tags || '[]')
     };
   }
 
@@ -74,7 +92,10 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       patientData: JSON.stringify(session.intake),
       assessmentData: JSON.stringify(session.assessment),
       summaryData: JSON.stringify(session.summary),
-      followUps: JSON.stringify(session.followUps || [])
+      followUps: JSON.stringify(session.followUps || []),
+      adminNote: session.adminNote || '',
+      adminStatus: session.adminStatus || 'new',
+      tags: JSON.stringify(session.tags || [])
     };
   }
 
@@ -144,6 +165,96 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
     async getSessionCount() {
       const row = countSessions.get();
       return row.count;
+    },
+
+    async updateAdminFields(sessionId, { adminNote, adminStatus, tags }) {
+      const row = selectSession.get(sessionId);
+      if (!row) return null;
+
+      const updates = [];
+      const params = {};
+
+      if (adminNote !== undefined) {
+        updates.push('admin_note = @adminNote');
+        params.adminNote = String(adminNote);
+      }
+      if (adminStatus !== undefined) {
+        updates.push('admin_status = @adminStatus');
+        params.adminStatus = String(adminStatus);
+      }
+      if (tags !== undefined) {
+        updates.push('tags = @tags');
+        params.tags = JSON.stringify(tags);
+      }
+
+      if (updates.length === 0) return rowToSession(row);
+
+      params.id = sessionId;
+      db.prepare(`UPDATE sessions SET ${updates.join(', ')} WHERE id = @id`).run(params);
+
+      const updated = selectSession.get(sessionId);
+      return rowToSession(updated);
+    },
+
+    async getStats() {
+      const allRows = selectAllSessions.all();
+      const total = allRows.length;
+
+      const riskDistribution = { 'Level 1': 0, 'Level 2': 0, 'Level 3': 0, 'Level 4': 0 };
+      const statusDistribution = {};
+      let highRiskRecent = 0;
+
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      for (const row of allRows) {
+        const assessment = JSON.parse(row.assessment_data);
+        const level = assessment.riskLevel;
+        if (level in riskDistribution) {
+          riskDistribution[level]++;
+        }
+
+        const status = row.admin_status || 'new';
+        statusDistribution[status] = (statusDistribution[status] || 0) + 1;
+
+        if ((level === 'Level 1' || level === 'Level 2') && row.created_at >= oneDayAgo) {
+          highRiskRecent++;
+        }
+      }
+
+      return { total, riskDistribution, statusDistribution, highRiskRecent };
+    },
+
+    async filterSessions({ riskLevel, adminStatus, withinHours, minFollowUps, sort } = {}) {
+      let allRows = selectAllSessions.all();
+
+      let sessions = allRows.map(rowToSession);
+
+      if (riskLevel) {
+        sessions = sessions.filter(s => s.assessment.riskLevel === riskLevel);
+      }
+
+      if (adminStatus) {
+        sessions = sessions.filter(s => s.adminStatus === adminStatus);
+      }
+
+      if (withinHours && withinHours > 0) {
+        const cutoff = new Date(Date.now() - withinHours * 60 * 60 * 1000).toISOString();
+        sessions = sessions.filter(s => s.createdAt >= cutoff);
+      }
+
+      if (minFollowUps !== undefined && minFollowUps > 0) {
+        sessions = sessions.filter(s => s.followUps.length >= minFollowUps);
+      }
+
+      if (sort === 'risk') {
+        const order = { 'Level 1': 1, 'Level 2': 2, 'Level 3': 3, 'Level 4': 4 };
+        sessions.sort((a, b) => (order[a.assessment.riskLevel] || 5) - (order[b.assessment.riskLevel] || 5));
+      } else if (sort === 'followups') {
+        sessions.sort((a, b) => b.followUps.length - a.followUps.length);
+      }
+      // default is already sorted by created_at DESC
+
+      return sessions;
     },
 
     close() {

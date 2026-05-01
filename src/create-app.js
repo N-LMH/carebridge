@@ -291,10 +291,21 @@ export function createApp({
   // Admin API endpoints
   app.get("/api/admin/sessions", async (request, response) => {
     const q = request.query.q;
+    const riskLevel = request.query.riskLevel;
+    const adminStatus = request.query.adminStatus;
+    const withinHours = request.query.withinHours ? Number.parseInt(request.query.withinHours, 10) : undefined;
+    const minFollowUps = request.query.minFollowUps ? Number.parseInt(request.query.minFollowUps, 10) : undefined;
+    const sort = request.query.sort;
+
     let sessions;
 
     if (q && String(q).trim()) {
       sessions = await storage.searchSessions(String(q).trim());
+      // Apply additional filters to search results
+      if (riskLevel) sessions = sessions.filter(s => s.assessment.riskLevel === riskLevel);
+      if (adminStatus) sessions = sessions.filter(s => s.adminStatus === adminStatus);
+    } else if (riskLevel || adminStatus || withinHours || minFollowUps || sort) {
+      sessions = await storage.filterSessions({ riskLevel, adminStatus, withinHours, minFollowUps, sort });
     } else {
       const limit = request.query.limit == null ? 50 : Number.parseInt(request.query.limit, 10);
       sessions = await storage.listSessions(Number.isNaN(limit) ? 50 : limit);
@@ -313,7 +324,10 @@ export function createApp({
         riskLevel: session.assessment.riskLevel,
         suggestedDepartment: session.assessment.suggestedDepartment,
         followUpCount: session.followUps?.length || 0,
-        redFlags: session.assessment.redFlags || []
+        redFlags: session.assessment.redFlags || [],
+        adminNote: session.adminNote || '',
+        adminStatus: session.adminStatus || 'new',
+        tags: session.tags || []
       }))
     });
   });
@@ -326,9 +340,18 @@ export function createApp({
     return response.json({ session });
   });
 
+  app.patch("/api/admin/sessions/:sessionId", async (request, response) => {
+    const { adminNote, adminStatus, tags } = request.body;
+    const session = await storage.updateAdminFields(request.params.sessionId, { adminNote, adminStatus, tags });
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    return response.json({ session });
+  });
+
   app.get("/api/admin/stats", async (_request, response) => {
-    const total = await storage.getSessionCount();
-    return response.json({ total });
+    const stats = await storage.getStats();
+    return response.json(stats);
   });
 
   app.all("/api/*path", (_request, response) => {
