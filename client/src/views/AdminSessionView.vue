@@ -251,7 +251,7 @@ async function saveNote() {
     noteStatus.value = t('admin.noteSaved')
     setTimeout(() => { noteStatus.value = '' }, 2000)
   } catch {
-    noteStatus.value = 'Save failed'
+    noteStatus.value = t('admin.noteSaveFailed')
   }
 }
 
@@ -267,13 +267,10 @@ async function updateStatus() {
 onMounted(async () => {
   const id = route.params.id as string
   try {
-    const res = await fetch(`/api/admin/sessions/${id}`)
-    if (res.ok) {
-      const data = await res.json()
-      rawSession.value = data.session
-      adminNote.value = data.session.adminNote || ''
-      adminStatus.value = (data.session.adminStatus || 'new') as AdminStatus
-    }
+    const data = await api.getAdminSession(id)
+    rawSession.value = data.session
+    adminNote.value = data.session.adminNote || ''
+    adminStatus.value = (data.session.adminStatus || 'new') as AdminStatus
   } catch {
     rawSession.value = null
   } finally {

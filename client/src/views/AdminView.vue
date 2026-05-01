@@ -175,18 +175,9 @@ async function loadSessions(query?: string) {
     if (filters.withinHours) params.withinHours = Number(filters.withinHours)
     if (filters.sort) params.sort = filters.sort
 
-    const hasParams = Object.keys(params).length > 0
-    let data
-
-    if (hasParams && !query) {
-      data = await api.filterAdminSessions(params)
-    } else {
-      const qs = new URLSearchParams()
-      for (const [k, v] of Object.entries(params)) qs.set(k, String(v))
-      const response = await fetch(`/api/admin/sessions${qs.toString() ? '?' + qs.toString() : ''}`)
-      data = await response.json()
-    }
-
+    const data = Object.keys(params).length > 0
+      ? await api.filterAdminSessions(params)
+      : await api.getAdminSessions()
     rawSessions.value = data.sessions
   } catch {
     rawSessions.value = []

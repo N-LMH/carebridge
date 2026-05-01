@@ -5,6 +5,7 @@ import type {
   SessionListResponse,
   FollowUpRecord,
   AdminStats,
+  AdminSessionSummary,
   AuthResponse,
   User,
   Message,
@@ -118,13 +119,30 @@ export const api = {
     })
   },
 
+  // Admin: 获取会话列表
+  getAdminSessions(params?: Record<string, string | number>) {
+    const qs = new URLSearchParams()
+    if (params) {
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== '') qs.set(k, String(v))
+      }
+    }
+    const queryStr = qs.toString()
+    return request<{ sessions: AdminSessionSummary[] }>(`/admin/sessions${queryStr ? '?' + queryStr : ''}`)
+  },
+
+  // Admin: 获取会话详情
+  getAdminSession(sessionId: string) {
+    return request<{ session: Session }>(`/admin/sessions/${sessionId}`)
+  },
+
   // Admin: 筛选会话
   filterAdminSessions(params: Record<string, string | number>) {
     const qs = new URLSearchParams()
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined && v !== '') qs.set(k, String(v))
     }
-    return request<SessionListResponse>(`/admin/sessions?${qs.toString()}`)
+    return request<{ sessions: AdminSessionSummary[] }>(`/admin/sessions?${qs.toString()}`)
   },
 
   // Doctor: 获取工作台概览

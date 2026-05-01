@@ -47,3 +47,15 @@ test("landing page shows entry points for user and admin", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Start Symptom Assessment|开始症状评估/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /Open Admin Panel|进入管理后台/ })).toBeVisible();
 });
+
+test("admin can log in and see the admin dashboard", async ({ page }) => {
+  await page.goto("/login");
+
+  await page.getByLabel(/Username|用户名/).fill("admin");
+  await page.getByLabel(/Password|密码/).fill("admin123");
+  await page.getByRole("button", { name: /Sign In|登录/ }).click();
+
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.getByRole("heading", { name: /Admin Panel|管理后台/ })).toBeVisible();
+  await expect(page.locator(".admin-filters")).toBeVisible();
+});
