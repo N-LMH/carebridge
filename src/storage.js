@@ -333,6 +333,14 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       if (adminStatus !== undefined) {
         updates.push('admin_status = @adminStatus');
         params.adminStatus = String(adminStatus);
+        if (adminStatus === 'reviewed' && !row.reviewed_at) {
+          updates.push('reviewed_at = @reviewedAt');
+          params.reviewedAt = new Date().toISOString();
+        }
+        if (adminStatus === 'resolved') {
+          updates.push('resolved_at = @resolvedAt');
+          params.resolvedAt = new Date().toISOString();
+        }
       }
       if (tags !== undefined) {
         updates.push('tags = @tags');
@@ -563,6 +571,67 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       // Mark patient messages as read by doctor
       this.markMessagesRead(sessionId, 'doctor');
       return { ...session, messages };
+    },
+
+    async getAdminQueues() {
+      const sessions = selectAllSessions.all().map(rowToSession);
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      const isHighRisk = s => s.assessment.riskLevel === 'Level 1' || s.assessment.riskLevel === 'Level 2';
+      const isUnresolved = s => s.adminStatus !== 'resolved' && s.adminStatus !== 'archived';
+      const isNew = s => s.adminStatus === 'new';
+      const isUrgent = s => s.adminStatus === 'urgent';
+      const isOverdue = s => {
+        if (!isUnresolved(s)) return false;
+        const created = new Date(s.createdAt);
+        const hoursSinceCreation = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+        return hoursSinceCreation > 72; // More than 3 days old and unresolved
+      };
+
+      const highRiskUnresolved = sessions
+        .filter(s => isHighRisk(s) && isUnresolved(s))
+        .sort((a, b) => (RISK_ORDER[a.assessment.riskLevel] || 5) - (RISK_ORDER[b.assessment.riskLevel] || 5))
+        .slice(0, 10);
+
+      const urgentAdminAttention = sessions
+        .filter(s => isUrgent(s) && isUnresolved(s))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10);
+
+      const newlyCreated = sessions
+        .filter(s => isNew(s) && s.createdAt >= oneDayAgo)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10);
+
+      const overdueStuck = sessions
+        .filter(s => isOverdue(s))
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        .slice(0, 10);
+
+      const recentlyUpdated = sessions
+        .filter(s => {
+          if (!isUnresolved(s)) return false;
+          const lastFollowUp = s.followUps && s.followUps.length > 0 ? s.followUps[0].createdAt : null;
+          const lastUpdate = lastFollowUp || s.createdAt;
+          return lastUpdate >= sevenDaysAgo;
+        })
+        .sort((a, b) => {
+          const aLast = a.followUps && a.followUps.length > 0 ? a.followUps[0].createdAt : a.createdAt;
+          const bLast = b.followUps && b.followUps.length > 0 ? b.followUps[0].createdAt : b.createdAt;
+          return new Date(bLast).getTime() - new Date(aLast).getTime();
+        })
+        .slice(0, 10);
+
+      return {
+        highRiskUnresolved,
+        urgentAdminAttention,
+        newlyCreated,
+        overdueStuck,
+        recentlyUpdated
+      };
     }
   };
 }

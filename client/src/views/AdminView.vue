@@ -3,7 +3,7 @@
     <header class="admin-header">
       <div class="admin-header-text">
         <h1 class="admin-title">{{ t('admin.title') }}</h1>
-        <p class="admin-desc">{{ t('admin.desc') }}</p>
+        <p class="admin-desc">{{ t('admin.descOps') }}</p>
       </div>
       <div class="admin-search">
         <svg class="admin-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -17,18 +17,101 @@
       </div>
     </header>
 
-    <div v-if="stats" class="dashboard-stats">
-      <div class="stat-card stat-card--total">
-        <span class="stat-value">{{ stats.total }}</span>
-        <span class="stat-label">{{ t('admin.totalSessions') }}</span>
+    <div v-if="stats" class="ops-metrics-bar">
+      <div class="ops-metric ops-metric--primary">
+        <span class="ops-metric-value">{{ stats.total }}</span>
+        <span class="ops-metric-label">{{ t('admin.totalSessions') }}</span>
       </div>
-      <div class="stat-card stat-card--high-risk">
-        <span class="stat-value">{{ stats.highRiskRecent }}</span>
-        <span class="stat-label">{{ t('admin.highRiskRecent') }}</span>
+      <div class="ops-metric ops-metric--alert">
+        <span class="ops-metric-value">{{ stats.highRiskRecent }}</span>
+        <span class="ops-metric-label">{{ t('admin.highRiskRecent') }}</span>
       </div>
-      <div class="stat-card" v-for="(count, level) in stats.riskDistribution" :key="level">
-        <span class="stat-value">{{ count }}</span>
-        <span class="stat-label">{{ level }}</span>
+      <div class="ops-metric" v-for="(count, status) in stats.statusDistribution" :key="status">
+        <span class="ops-metric-value">{{ count }}</span>
+        <span class="ops-metric-label">{{ statusStatusLabel(String(status)) }}</span>
+      </div>
+      <div class="ops-metric" v-for="(count, level) in stats.riskDistribution" :key="'r-'+level">
+        <span class="ops-metric-value">{{ count }}</span>
+        <span class="ops-metric-label">{{ level }}</span>
+      </div>
+    </div>
+
+    <div v-if="queues" class="ops-queues">
+      <div class="ops-queue-panel">
+        <h3 class="ops-queue-title">
+          <span class="ops-queue-icon ops-queue-icon--alert">!</span>
+          {{ t('admin.queueHighRiskUnresolved') }}
+          <span class="ops-queue-count">{{ queues.highRiskUnresolved.length }}</span>
+        </h3>
+        <div v-if="queues.highRiskUnresolved.length === 0" class="ops-queue-empty">{{ t('admin.noSessions') }}</div>
+        <div v-else class="ops-queue-list">
+          <div v-for="session in queues.highRiskUnresolved" :key="session.id" class="ops-queue-item" @click="openSession(session.id)">
+            <span class="ops-queue-patient">{{ session.patientName }}</span>
+            <span class="risk-badge" :class="riskClass(session.riskLevel)">{{ session.riskLevel }}</span>
+            <span class="ops-queue-date">{{ formatDate(session.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ops-queue-panel">
+        <h3 class="ops-queue-title">
+          <span class="ops-queue-icon ops-queue-icon--urgent">!</span>
+          {{ t('admin.queueUrgentAdminAttention') }}
+          <span class="ops-queue-count">{{ queues.urgentAdminAttention.length }}</span>
+        </h3>
+        <div v-if="queues.urgentAdminAttention.length === 0" class="ops-queue-empty">{{ t('admin.noSessions') }}</div>
+        <div v-else class="ops-queue-list">
+          <div v-for="session in queues.urgentAdminAttention" :key="session.id" class="ops-queue-item" @click="openSession(session.id)">
+            <span class="ops-queue-patient">{{ session.patientName }}</span>
+            <span class="status-chip status--urgent">{{ statusLabel(session.adminStatus) }}</span>
+            <span class="ops-queue-date">{{ formatDate(session.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ops-queue-panel">
+        <h3 class="ops-queue-title">
+          <span class="ops-queue-icon ops-queue-icon--new">+</span>
+          {{ t('admin.queueNewlyCreated') }}
+          <span class="ops-queue-count">{{ queues.newlyCreated.length }}</span>
+        </h3>
+        <div v-if="queues.newlyCreated.length === 0" class="ops-queue-empty">{{ t('admin.noSessions') }}</div>
+        <div v-else class="ops-queue-list">
+          <div v-for="session in queues.newlyCreated" :key="session.id" class="ops-queue-item" @click="openSession(session.id)">
+            <span class="ops-queue-patient">{{ session.patientName }}</span>
+            <span class="ops-queue-date">{{ formatDate(session.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ops-queue-panel">
+        <h3 class="ops-queue-title">
+          <span class="ops-queue-icon ops-queue-icon--overdue">⏰</span>
+          {{ t('admin.queueOverdueStuck') }}
+          <span class="ops-queue-count">{{ queues.overdueStuck.length }}</span>
+        </h3>
+        <div v-if="queues.overdueStuck.length === 0" class="ops-queue-empty">{{ t('admin.noSessions') }}</div>
+        <div v-else class="ops-queue-list">
+          <div v-for="session in queues.overdueStuck" :key="session.id" class="ops-queue-item" @click="openSession(session.id)">
+            <span class="ops-queue-patient">{{ session.patientName }}</span>
+            <span class="ops-queue-date">{{ formatDate(session.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ops-queue-panel">
+        <h3 class="ops-queue-title">
+          <span class="ops-queue-icon ops-queue-icon--recent">↻</span>
+          {{ t('admin.queueRecentlyUpdated') }}
+          <span class="ops-queue-count">{{ queues.recentlyUpdated.length }}</span>
+        </h3>
+        <div v-if="queues.recentlyUpdated.length === 0" class="ops-queue-empty">{{ t('admin.noSessions') }}</div>
+        <div v-else class="ops-queue-list">
+          <div v-for="session in queues.recentlyUpdated" :key="session.id" class="ops-queue-item" @click="openSession(session.id)">
+            <span class="ops-queue-patient">{{ session.patientName }}</span>
+            <span class="ops-queue-date">{{ formatDate(session.createdAt) }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -93,6 +176,7 @@
             <th>{{ t('admin.adminStatus') }}</th>
             <th>{{ t('admin.colDepartment') }}</th>
             <th>{{ t('admin.colDate') }}</th>
+            <th>{{ t('admin.caseAge') }}</th>
             <th>{{ t('admin.colFollowUps') }}</th>
             <th></th>
           </tr>
@@ -120,6 +204,7 @@
             </td>
             <td>{{ session.suggestedDepartment }}</td>
             <td class="admin-cell-date">{{ formatDate(session.createdAt) }}</td>
+            <td class="admin-cell-center">{{ calculateCaseAge(session.createdAt) }}</td>
             <td class="admin-cell-center">{{ session.followUpCount }}</td>
             <td>
               <button class="btn btn-ghost btn-sm" @click.stop="openSession(session.id)">
@@ -146,6 +231,13 @@ const router = useRouter()
 
 const rawSessions = ref<AdminSessionSummary[]>([])
 const stats = ref<AdminStats | null>(null)
+const queues = ref<{
+  highRiskUnresolved: AdminSessionSummary[]
+  urgentAdminAttention: AdminSessionSummary[]
+  newlyCreated: AdminSessionSummary[]
+  overdueStuck: AdminSessionSummary[]
+  recentlyUpdated: AdminSessionSummary[]
+} | null>(null)
 const loading = ref(true)
 const searchQuery = ref('')
 let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -194,6 +286,14 @@ async function loadStats() {
   }
 }
 
+async function loadQueues() {
+  try {
+    queues.value = await api.getAdminQueues()
+  } catch {
+    queues.value = null
+  }
+}
+
 function debouncedSearch() {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
@@ -235,15 +335,20 @@ function statusClass(status: AdminStatus) {
   return map[status] || 'status--new'
 }
 
+const STATUS_I18N: Record<string, string> = {
+  new: 'admin.statusNew',
+  reviewed: 'admin.statusReviewed',
+  urgent: 'admin.statusUrgent',
+  resolved: 'admin.statusResolved',
+  archived: 'admin.statusArchived'
+}
+
 function statusLabel(status: AdminStatus) {
-  const map: Record<string, string> = {
-    new: 'admin.statusNew',
-    reviewed: 'admin.statusReviewed',
-    urgent: 'admin.statusUrgent',
-    resolved: 'admin.statusResolved',
-    archived: 'admin.statusArchived'
-  }
-  return t(map[status] || 'admin.statusNew')
+  return t(STATUS_I18N[status] || 'admin.statusNew')
+}
+
+function statusStatusLabel(status: string) {
+  return t(STATUS_I18N[status] || status)
 }
 
 function rowClass(session: AdminSessionSummary) {
@@ -259,9 +364,20 @@ function formatDate(iso: string) {
   return d.toLocaleDateString(locale.value === 'zh' ? 'zh-CN' : 'en-US') + ' ' + d.toLocaleTimeString(locale.value === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
+function calculateCaseAge(iso: string) {
+  if (!iso) return '—'
+  const created = new Date(iso)
+  const now = new Date()
+  const hours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60))
+  if (hours < 24) return t('admin.hoursAgo', { hours })
+  const days = Math.floor(hours / 24)
+  return t('admin.daysAgo', { days })
+}
+
 onMounted(() => {
   loadSessions()
   loadStats()
+  loadQueues()
 })
 </script>
 
@@ -269,7 +385,7 @@ onMounted(() => {
 .admin-view {
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--space-6);
+  padding: var(--space-5);
 }
 
 .admin-header {
@@ -313,44 +429,48 @@ onMounted(() => {
   padding-left: 38px;
 }
 
-.dashboard-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--space-3);
-  margin-bottom: var(--space-6);
-}
-
-.stat-card {
+.ops-metrics-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding: var(--space-3) var(--space-4);
   background: var(--surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  padding: var(--space-4);
-  text-align: center;
 }
 
-.stat-card--total {
-  border-color: var(--primary);
+.ops-metric {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+}
+
+.ops-metric--primary {
   background: var(--blue-50);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
-.stat-card--high-risk {
-  border-color: var(--c-level-1);
+.ops-metric--alert {
   background: var(--c-level-1-bg);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.stat-value {
-  display: block;
-  font-size: var(--text-2xl);
+.ops-metric-value {
+  font-size: var(--text-lg);
   font-weight: 800;
   color: var(--text);
+  line-height: 1;
 }
 
-.stat-label {
-  display: block;
+.ops-metric-label {
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
-  margin-top: var(--space-1);
+  white-space: nowrap;
 }
 
 .admin-filters {
@@ -363,6 +483,123 @@ onMounted(() => {
   background: var(--surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
+}
+
+.ops-queues {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.ops-queue-panel {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: var(--space-4);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ops-queue-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ops-queue-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: white;
+}
+
+.ops-queue-icon--alert {
+  background: var(--c-error);
+}
+
+.ops-queue-icon--urgent {
+  background: var(--c-warning);
+}
+
+.ops-queue-icon--new {
+  background: var(--primary);
+}
+
+.ops-queue-icon--overdue {
+  background: var(--c-warning);
+}
+
+.ops-queue-icon--recent {
+  background: var(--c-success);
+}
+
+.ops-queue-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--gray-100);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.ops-queue-empty {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  padding: var(--space-2) 0;
+}
+
+.ops-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ops-queue-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.ops-queue-item:hover {
+  background: var(--blue-50);
+}
+
+.ops-queue-patient {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ops-queue-date {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .filter-group {
@@ -397,9 +634,9 @@ onMounted(() => {
 
 .admin-table th {
   text-align: left;
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   font-weight: 600;
-  color: var(--text-secondary);
+  color: #92400e;
   border-bottom: 2px solid var(--border);
   white-space: nowrap;
   font-size: var(--text-xs);

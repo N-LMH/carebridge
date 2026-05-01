@@ -467,10 +467,68 @@ describe("CareBridge API", () => {
       expect(patchRes.body.session.adminNote).toBe("Reviewed by admin");
       expect(patchRes.body.session.adminStatus).toBe("reviewed");
       expect(patchRes.body.session.tags).toEqual(["follow-up-needed"]);
+      expect(patchRes.body.session.reviewedAt).toBeTruthy();
 
       const getRes = await client.get(`/api/admin/sessions/${sessionId}`).set("Authorization", `Bearer ${token}`);
       expect(getRes.body.session.adminNote).toBe("Reviewed by admin");
       expect(getRes.body.session.adminStatus).toBe("reviewed");
+      expect(getRes.body.session.reviewedAt).toBeTruthy();
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("admin queue endpoint returns grouped oversight queues", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "admin", "admin123");
+
+      const triage = await client.post("/api/triage").send({
+        patientName: "Queue Test",
+        age: 68,
+        gender: "male",
+        region: "county",
+        symptoms: ["fever", "cough", "chest tightness"],
+        symptomNotes: "worsening symptoms",
+        symptomDays: 4,
+        severity: "severe",
+        breathingDifficulty: "moderate",
+        symptomsWorsening: true,
+        maxTemperatureC: 39.1,
+        chillsOrSweats: "both",
+        chronicConditions: ["hypertension"],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        coughType: "productive",
+        nightSymptoms: "yes",
+        painRadiation: "none",
+        activityRelation: "both",
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const sessionId = triage.body.session.id;
+
+      await client
+        .patch(`/api/admin/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({ adminStatus: "urgent" });
+
+      const response = await client
+        .get("/api/admin/queues")
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.highRiskUnresolved).toBeDefined();
+      expect(response.body.urgentAdminAttention).toBeDefined();
+      expect(response.body.newlyCreated).toBeDefined();
+      expect(response.body.overdueStuck).toBeDefined();
+      expect(response.body.recentlyUpdated).toBeDefined();
+      expect(response.body.urgentAdminAttention.some((session) => session.id === sessionId)).toBe(true);
+      expect(response.body.highRiskUnresolved.some((session) => session.id === sessionId)).toBe(true);
     } finally {
       await cleanupDb(filePath);
     }

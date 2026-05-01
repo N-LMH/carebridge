@@ -507,6 +507,11 @@ export function createApp({
     return response.json(stats);
   });
 
+  app.get("/api/admin/queues", requireAuth("admin"), async (_request, response) => {
+    const queues = await storage.getAdminQueues();
+    return response.json(queues);
+  });
+
   app.all("/api/*path", (_request, response) => {
     response.status(404).json({ status: "error", message: "Not found" });
   });

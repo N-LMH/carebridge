@@ -894,6 +894,10 @@ export const messages = {
       zh: '查看和管理已存储的患者分诊记录',
       en: 'Review and manage stored patient triage records'
     },
+    descOps: {
+      zh: '运营监控与病例管理',
+      en: 'Operations Monitoring & Case Management'
+    },
     searchPlaceholder: {
       zh: '搜索患者姓名、地区或症状...',
       en: 'Search patient name, region, or symptoms...'
@@ -1070,6 +1074,18 @@ export const messages = {
       zh: '添加内部备注...',
       en: 'Add internal note...'
     },
+    reviewNote: {
+      zh: '审核备注',
+      en: 'Review Note'
+    },
+    reviewNotePlaceholder: {
+      zh: '添加审核备注...',
+      en: 'Add review note...'
+    },
+    followUpCount: {
+      zh: '随访次数',
+      en: 'Follow-ups'
+    },
     adminStatus: {
       zh: '病例状态',
       en: 'Case Status'
@@ -1106,6 +1122,27 @@ export const messages = {
       zh: '清除筛选',
       en: 'Clear Filters'
     },
+    // Queue labels
+    queueHighRiskUnresolved: {
+      zh: '高风险未解决',
+      en: 'High Risk Unresolved'
+    },
+    queueUrgentAdminAttention: {
+      zh: '紧急管理关注',
+      en: 'Urgent Admin Attention'
+    },
+    queueNewlyCreated: {
+      zh: '新建案例',
+      en: 'New Cases'
+    },
+    queueOverdueStuck: {
+      zh: '过期案例',
+      en: 'Overdue Cases'
+    },
+    queueRecentlyUpdated: {
+      zh: '最近更新',
+      en: 'Recently Updated'
+    },
     noHighRisk: {
       zh: '近24小时无高风险病例',
       en: 'No high-risk cases in the last 24 hours'
@@ -1130,6 +1167,55 @@ export const messages = {
       zh: '{hours} 小时前',
       en: '{hours}h ago'
     },
+    // Operational summary labels
+    operationalSummary: {
+      zh: '运营摘要',
+      en: 'Operational Summary'
+    },
+    riskClassificationSummary: {
+      zh: '风险分类摘要',
+      en: 'Risk Classification Summary'
+    },
+    operationalRemarks: {
+      zh: '运营备注',
+      en: 'Operational Remarks'
+    },
+    caseStatus: {
+      zh: '案例状态',
+      en: 'Case Status'
+    },
+    workflowTrace: {
+      zh: '工作流跟踪',
+      en: 'Workflow Trace'
+    },
+    caseUnresolved: {
+      zh: '未解决',
+      en: 'Unresolved'
+    },
+    caseFlagged: {
+      zh: '已标记',
+      en: 'Flagged'
+    },
+    caseReviewed: {
+      zh: '已审阅',
+      en: 'Reviewed'
+    },
+    caseResolved: {
+      zh: '已解决',
+      en: 'Resolved'
+    },
+    caseArchived: {
+      zh: '已归档',
+      en: 'Archived'
+    },
+    redFlagsCount: {
+      zh: '危险信号',
+      en: 'Red Flags'
+    },
+    actionRecommendation: {
+      zh: '行动建议',
+      en: 'Action Recommendation'
+    },
     daysAgo: {
       zh: '{days} 天前',
       en: '{days}d ago'
@@ -1138,11 +1224,11 @@ export const messages = {
   doctor: {
     title: {
       zh: '医生工作台',
-      en: 'Doctor Dashboard'
+      en: 'Doctor Workbench'
     },
     desc: {
-      zh: '查看患者病例、分诊结果和沟通记录',
-      en: 'Review patient cases, triage results, and conversation history'
+      zh: '我的待办与患者动态',
+      en: 'My Tasks & Patient Updates'
     },
     // Dashboard stats
     totalActive: {

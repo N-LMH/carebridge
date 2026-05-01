@@ -40,17 +40,118 @@
       </header>
 
       <div class="admin-note-section">
-        <h3 class="admin-note-title">{{ t('admin.adminNote') }}</h3>
+        <h3 class="admin-note-title">{{ t('admin.reviewNote') }}</h3>
         <div class="admin-note-input-row">
           <textarea
             v-model="adminNote"
             class="field-textarea admin-note-textarea"
             rows="2"
-            :placeholder="t('admin.adminNotePlaceholder')"
+            :placeholder="t('admin.reviewNotePlaceholder')"
           ></textarea>
           <button class="btn btn-primary btn-sm" @click="saveNote">{{ t('admin.saveNote') }}</button>
         </div>
         <p v-if="noteStatus" class="note-status">{{ noteStatus }}</p>
+      </div>
+
+      <div class="session-metadata-bar">
+        <div class="metadata-item">
+          <span class="metadata-label">{{ t('admin.intakeTime') }}</span>
+          <span class="metadata-value">{{ formatDate(rawSession?.createdAt ?? '') }}</span>
+        </div>
+        <div class="metadata-item">
+          <span class="metadata-label">{{ t('admin.lastFollowUp') }}</span>
+          <span class="metadata-value">{{ lastFollowUpTime }}</span>
+        </div>
+        <div class="metadata-item">
+          <span class="metadata-label">{{ t('admin.caseAge') }}</span>
+          <span class="metadata-value">{{ caseAge }}</span>
+        </div>
+        <div class="metadata-item" v-if="rawSession?.followUps?.length">
+          <span class="metadata-label">{{ t('admin.followUpCount') }}</span>
+          <span class="metadata-value">{{ rawSession.followUps.length }}</span>
+        </div>
+      </div>
+
+      <div class="ops-summary-section">
+        <h3 class="ops-summary-title">{{ t('admin.operationalSummary') }}</h3>
+        <div class="ops-summary-grid">
+          <div class="ops-summary-card">
+            <span class="ops-summary-label">{{ t('admin.riskClassificationSummary') }}</span>
+            <div class="ops-summary-content">
+              <span class="risk-badge" :class="riskClass">{{ session.assessment.riskLevel }}</span>
+              <span v-if="session.assessment.redFlags?.length" class="ops-red-flags">
+                {{ t('admin.redFlagsCount') }}: {{ session.assessment.redFlags.length }}
+              </span>
+            </div>
+          </div>
+          <div class="ops-summary-card">
+            <span class="ops-summary-label">{{ t('admin.caseStatus') }}</span>
+            <div class="ops-summary-content">
+              <span class="status-chip" :class="statusClass(adminStatus)">
+                {{ statusLabel(adminStatus) }}
+              </span>
+              <span v-if="isCaseUnresolved" class="ops-unresolved-indicator">
+                {{ t('admin.caseUnresolved') }}
+              </span>
+            </div>
+          </div>
+          <div class="ops-summary-card">
+            <span class="ops-summary-label">{{ t('admin.actionRecommendation') }}</span>
+            <div class="ops-summary-content">
+              <span class="ops-action-label">{{ session.assessment.actionLabel }}</span>
+            </div>
+          </div>
+          <div class="ops-summary-card">
+            <span class="ops-summary-label">{{ t('admin.operationalRemarks') }}</span>
+            <div class="ops-summary-content">
+              <span v-if="sessionTags.length > 0" class="ops-tags">
+                <span v-for="tag in sessionTags" :key="tag" class="tag-chip">{{ tag }}</span>
+              </span>
+              <span v-else class="ops-no-remarks">{{ t('common.noneProvided') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="workflow-trace-section">
+        <h3 class="workflow-trace-title">{{ t('admin.workflowTrace') }}</h3>
+        <div class="workflow-trace-timeline">
+          <div class="workflow-trace-item">
+            <div class="workflow-trace-dot workflow-trace-dot--completed"></div>
+            <div class="workflow-trace-content">
+              <span class="workflow-trace-label">{{ t('admin.intakeTime') }}</span>
+              <span class="workflow-trace-value">{{ formatDate(rawSession?.createdAt ?? '') }}</span>
+            </div>
+          </div>
+          <div v-if="rawSession?.reviewedAt" class="workflow-trace-item">
+            <div class="workflow-trace-dot workflow-trace-dot--completed"></div>
+            <div class="workflow-trace-content">
+              <span class="workflow-trace-label">{{ t('admin.statusReviewed') }}</span>
+              <span class="workflow-trace-value">{{ formatDate(rawSession.reviewedAt) }}</span>
+            </div>
+          </div>
+          <div v-if="rawSession?.resolvedAt" class="workflow-trace-item">
+            <div class="workflow-trace-dot workflow-trace-dot--completed"></div>
+            <div class="workflow-trace-content">
+              <span class="workflow-trace-label">{{ t('admin.statusResolved') }}</span>
+              <span class="workflow-trace-value">{{ formatDate(rawSession.resolvedAt) }}</span>
+            </div>
+          </div>
+          <div v-if="lastFollowUpTime !== '—'" class="workflow-trace-item">
+            <div class="workflow-trace-dot workflow-trace-dot--completed"></div>
+            <div class="workflow-trace-content">
+              <span class="workflow-trace-label">{{ t('admin.lastFollowUp') }}</span>
+              <span class="workflow-trace-value">{{ lastFollowUpTime }}</span>
+            </div>
+          </div>
+          <div class="workflow-trace-item">
+            <div class="workflow-trace-dot" :class="isCaseUnresolved ? 'workflow-trace-dot--pending' : 'workflow-trace-dot--completed'"></div>
+            <div class="workflow-trace-content">
+              <span class="workflow-trace-label">{{ t('admin.caseAge') }}</span>
+              <span class="workflow-trace-value">{{ caseAge }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="detail-grid">
@@ -223,6 +324,22 @@ const session = computed(() => {
 
 const sessionTags = computed(() => rawSession.value?.tags || [])
 
+const lastFollowUpTime = computed(() => {
+  const fus = rawSession.value?.followUps
+  if (!fus || fus.length === 0) return '—'
+  return formatDate(fus[fus.length - 1].createdAt)
+})
+
+const caseAge = computed(() => {
+  if (!rawSession.value?.createdAt) return '—'
+  const created = new Date(rawSession.value.createdAt)
+  const now = new Date()
+  const hours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60))
+  if (hours < 24) return t('admin.hoursAgo', { hours })
+  const days = Math.floor(hours / 24)
+  return t('admin.daysAgo', { days })
+})
+
 const riskClass = computed(() => {
   const level = session.value?.assessment?.riskLevel
   if (level === 'Level 1') return 'risk-badge--1'
@@ -230,6 +347,32 @@ const riskClass = computed(() => {
   if (level === 'Level 3') return 'risk-badge--3'
   return 'risk-badge--4'
 })
+
+const isCaseUnresolved = computed(() => {
+  return adminStatus.value !== 'resolved' && adminStatus.value !== 'archived'
+})
+
+function statusClass(status: AdminStatus) {
+  const map: Record<string, string> = {
+    new: 'status--new',
+    reviewed: 'status--reviewed',
+    urgent: 'status--urgent',
+    resolved: 'status--resolved',
+    archived: 'status--archived'
+  }
+  return map[status] || 'status--new'
+}
+
+function statusLabel(status: AdminStatus) {
+  const STATUS_I18N: Record<string, string> = {
+    new: 'admin.statusNew',
+    reviewed: 'admin.statusReviewed',
+    urgent: 'admin.statusUrgent',
+    resolved: 'admin.statusResolved',
+    archived: 'admin.statusArchived'
+  }
+  return t(STATUS_I18N[status] || 'admin.statusNew')
+}
 
 function genderLabel(g: string) {
   if (g === 'male') return t('gender.male')
@@ -281,9 +424,10 @@ onMounted(async () => {
 
 <style scoped>
 .admin-detail {
+  --admin-accent: #92400e;
   max-width: 1100px;
   margin: 0 auto;
-  padding: var(--space-6);
+  padding: var(--space-5);
 }
 
 .admin-detail-nav {
@@ -362,17 +506,47 @@ onMounted(async () => {
 }
 
 .admin-note-section {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
   padding: var(--space-5);
   background: var(--surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
 }
 
+.session-metadata-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.metadata-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.metadata-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.metadata-value {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
 .admin-note-title {
   font-size: var(--text-sm);
   font-weight: 700;
-  color: var(--text);
+  color: var(--admin-accent);
   margin-bottom: var(--space-3);
 }
 
@@ -391,6 +565,149 @@ onMounted(async () => {
   font-size: var(--text-xs);
   color: var(--c-success);
   margin-top: var(--space-2);
+}
+
+.ops-summary-section {
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.ops-summary-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--admin-accent);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ops-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.ops-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ops-summary-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ops-summary-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.ops-red-flags {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--c-error);
+}
+
+.ops-unresolved-indicator {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--c-warning);
+  padding: var(--space-1) var(--space-2);
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: var(--radius-full);
+}
+
+.ops-action-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ops-tags {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.ops-no-remarks {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.workflow-trace-section {
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+.workflow-trace-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--admin-accent);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.workflow-trace-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--border-light);
+}
+
+.workflow-trace-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  position: relative;
+}
+
+.workflow-trace-dot {
+  position: absolute;
+  left: calc(-1 * var(--space-4) - 5px);
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--gray-300);
+  border: 2px solid var(--surface);
+}
+
+.workflow-trace-dot--completed {
+  background: var(--c-success);
+}
+
+.workflow-trace-dot--pending {
+  background: var(--c-warning);
+}
+
+.workflow-trace-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.workflow-trace-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.workflow-trace-value {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
 }
 
 .detail-grid {
@@ -421,7 +738,7 @@ onMounted(async () => {
 .detail-card-title svg {
   width: 22px;
   height: 22px;
-  color: var(--primary);
+  color: var(--admin-accent);
 }
 
 .detail-card-count {
@@ -458,7 +775,7 @@ onMounted(async () => {
   min-width: 120px;
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--primary);
+  color: var(--admin-accent);
   flex-shrink: 0;
 }
 

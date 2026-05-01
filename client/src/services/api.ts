@@ -111,6 +111,17 @@ export const api = {
     return request<AdminStats>('/admin/stats')
   },
 
+  // Admin: 获取运营队列
+  getAdminQueues() {
+    return request<{
+      highRiskUnresolved: AdminSessionSummary[]
+      urgentAdminAttention: AdminSessionSummary[]
+      newlyCreated: AdminSessionSummary[]
+      overdueStuck: AdminSessionSummary[]
+      recentlyUpdated: AdminSessionSummary[]
+    }>('/admin/queues')
+  },
+
   // Admin: 更新会话管理字段
   updateAdminSession(sessionId: string, data: { adminNote?: string; adminStatus?: string; tags?: string[] }) {
     return request<{ session: Session }>(`/admin/sessions/${sessionId}`, {
