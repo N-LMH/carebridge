@@ -11,7 +11,11 @@ import type {
   Message,
   DoctorSessionSummary,
   DoctorSession,
-  DoctorDashboardResponse
+  DoctorDashboardResponse,
+  FollowUpPlan,
+  Reassessment,
+  TimelineEvent,
+  AdminSlaStats
 } from '@/types'
 
 const API_BASE = '/api'
@@ -94,6 +98,18 @@ export const api = {
     })
   },
 
+  getFollowUpPlan(sessionId: string) {
+    return request<{ followUpPlan: FollowUpPlan }>(`/sessions/${sessionId}/follow-up-plan`)
+  },
+
+  getReassessments(sessionId: string) {
+    return request<{ reassessments: Reassessment[] }>(`/sessions/${sessionId}/reassessments`)
+  },
+
+  getSessionTimeline(sessionId: string) {
+    return request<{ timeline: TimelineEvent[] }>(`/sessions/${sessionId}/timeline`)
+  },
+
   // Patient messages
   getSessionMessages(sessionId: string) {
     return request<{ messages: Message[] }>(`/sessions/${sessionId}/messages`)
@@ -119,7 +135,13 @@ export const api = {
       newlyCreated: AdminSessionSummary[]
       overdueStuck: AdminSessionSummary[]
       recentlyUpdated: AdminSessionSummary[]
+      overdueDoctorReply: AdminSessionSummary[]
+      riskUpgraded: AdminSessionSummary[]
     }>('/admin/queues')
+  },
+
+  getAdminSla() {
+    return request<AdminSlaStats>('/admin/sla')
   },
 
   // Admin: 更新会话管理字段
@@ -145,6 +167,10 @@ export const api = {
   // Admin: 获取会话详情
   getAdminSession(sessionId: string) {
     return request<{ session: Session }>(`/admin/sessions/${sessionId}`)
+  },
+
+  getAdminSessionTimeline(sessionId: string) {
+    return request<{ timeline: TimelineEvent[] }>(`/admin/sessions/${sessionId}/timeline`)
   },
 
   // Admin: 筛选会话
@@ -184,6 +210,10 @@ export const api = {
   // Doctor: 获取会话详情
   getDoctorSession(sessionId: string) {
     return request<{ session: DoctorSession }>(`/doctor/sessions/${sessionId}`)
+  },
+
+  getDoctorSessionTimeline(sessionId: string) {
+    return request<{ timeline: TimelineEvent[] }>(`/doctor/sessions/${sessionId}/timeline`)
   },
 
   // Doctor: 获取消息

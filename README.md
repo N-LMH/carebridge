@@ -153,6 +153,7 @@ npm run build:pdf
 - [Chinese README](./README-zn.md)
 - [Detailed English Documentation](./doc/README-English.md)
 - [Product Design Document](./doc/产品设计.md)
+- [Next-Phase End-to-End Feature Plan](./doc/下一阶段功能端到端方案.md)
 - [Submission PDF](./doc/CareBridge-Hackathon-Deck.pdf)
 - [License](./LICENSE)
 - [Security Policy](./SECURITY.md)

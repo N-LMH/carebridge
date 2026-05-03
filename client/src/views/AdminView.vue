@@ -36,6 +36,29 @@
       </div>
     </div>
 
+    <div v-if="sla" class="ops-metrics-bar ops-metrics-bar--sla">
+      <div class="ops-metric ops-metric--primary">
+        <span class="ops-metric-value">{{ sla.highRiskReviewedOnTime }}</span>
+        <span class="ops-metric-label">{{ t('admin.slaHighRiskOnTime') }}</span>
+      </div>
+      <div class="ops-metric ops-metric--alert">
+        <span class="ops-metric-value">{{ sla.highRiskReviewedLate }}</span>
+        <span class="ops-metric-label">{{ t('admin.slaHighRiskLate') }}</span>
+      </div>
+      <div class="ops-metric">
+        <span class="ops-metric-value">{{ sla.waitingDoctorReplyOverdue }}</span>
+        <span class="ops-metric-label">{{ t('admin.slaWaitingDoctorOverdue') }}</span>
+      </div>
+      <div class="ops-metric">
+        <span class="ops-metric-value">{{ sla.recentRiskUpgrades }}</span>
+        <span class="ops-metric-label">{{ t('admin.slaRecentRiskUpgrades') }}</span>
+      </div>
+      <div class="ops-metric">
+        <span class="ops-metric-value">{{ sla.avgHighRiskReviewMinutes ?? '—' }}</span>
+        <span class="ops-metric-label">{{ t('admin.slaAvgReviewMinutes') }}</span>
+      </div>
+    </div>
+
     <div v-if="queues" class="ops-queues">
       <div class="ops-queue-panel">
         <h3 class="ops-queue-title">
@@ -109,6 +132,37 @@
         <div v-else class="ops-queue-list">
           <div v-for="session in queues.recentlyUpdated" :key="session.id" class="ops-queue-item" @click="openSession(session.id)">
             <span class="ops-queue-patient">{{ session.patientName }}</span>
+            <span class="ops-queue-date">{{ formatDate(session.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ops-queue-panel">
+        <h3 class="ops-queue-title">
+          <span class="ops-queue-icon ops-queue-icon--urgent">!</span>
+          {{ t('admin.queueOverdueDoctorReply') }}
+          <span class="ops-queue-count">{{ queues.overdueDoctorReply.length }}</span>
+        </h3>
+        <div v-if="queues.overdueDoctorReply.length === 0" class="ops-queue-empty">{{ t('admin.noSessions') }}</div>
+        <div v-else class="ops-queue-list">
+          <div v-for="session in queues.overdueDoctorReply" :key="session.id" class="ops-queue-item" @click="openSession(session.id)">
+            <span class="ops-queue-patient">{{ session.patientName }}</span>
+            <span class="ops-queue-date">{{ formatDate(session.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ops-queue-panel">
+        <h3 class="ops-queue-title">
+          <span class="ops-queue-icon ops-queue-icon--alert">!</span>
+          {{ t('admin.queueRiskUpgraded') }}
+          <span class="ops-queue-count">{{ queues.riskUpgraded.length }}</span>
+        </h3>
+        <div v-if="queues.riskUpgraded.length === 0" class="ops-queue-empty">{{ t('admin.noSessions') }}</div>
+        <div v-else class="ops-queue-list">
+          <div v-for="session in queues.riskUpgraded" :key="session.id" class="ops-queue-item" @click="openSession(session.id)">
+            <span class="ops-queue-patient">{{ session.patientName }}</span>
+            <span class="risk-badge" :class="riskClass(session.riskLevel)">{{ session.riskLevel }}</span>
             <span class="ops-queue-date">{{ formatDate(session.createdAt) }}</span>
           </div>
         </div>
@@ -231,12 +285,21 @@ const router = useRouter()
 
 const rawSessions = ref<AdminSessionSummary[]>([])
 const stats = ref<AdminStats | null>(null)
+const sla = ref<{
+  highRiskReviewedOnTime: number
+  highRiskReviewedLate: number
+  waitingDoctorReplyOverdue: number
+  recentRiskUpgrades: number
+  avgHighRiskReviewMinutes: number | null
+} | null>(null)
 const queues = ref<{
   highRiskUnresolved: AdminSessionSummary[]
   urgentAdminAttention: AdminSessionSummary[]
   newlyCreated: AdminSessionSummary[]
   overdueStuck: AdminSessionSummary[]
   recentlyUpdated: AdminSessionSummary[]
+  overdueDoctorReply: AdminSessionSummary[]
+  riskUpgraded: AdminSessionSummary[]
 } | null>(null)
 const loading = ref(true)
 const searchQuery = ref('')
@@ -291,6 +354,14 @@ async function loadQueues() {
     queues.value = await api.getAdminQueues()
   } catch {
     queues.value = null
+  }
+}
+
+async function loadSla() {
+  try {
+    sla.value = await api.getAdminSla()
+  } catch {
+    sla.value = null
   }
 }
 
@@ -378,6 +449,7 @@ onMounted(() => {
   loadSessions()
   loadStats()
   loadQueues()
+  loadSla()
 })
 </script>
 

@@ -153,6 +153,7 @@ npm run build:pdf
 - [English README](./README.md)
 - [详细中文说明文档](./doc/说明文档-中文.md)
 - [产品设计文档](./doc/产品设计.md)
+- [下一阶段功能端到端方案](./doc/下一阶段功能端到端方案.md)
 - [提交 PDF](./doc/CareBridge-Hackathon-Deck.pdf)
 - [开源许可证](./LICENSE)
 - [安全说明](./SECURITY.md)

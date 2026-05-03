@@ -174,6 +174,107 @@ function normalizePayload(body) {
   };
 }
 
+function getFollowUpWindowHours(riskLevel) {
+  if (riskLevel === "Level 2") return 12;
+  if (riskLevel === "Level 3") return 24;
+  if (riskLevel === "Level 4") return 36;
+  return null;
+}
+
+function buildFollowUpPlan(assessment, now = new Date()) {
+  const windowHours = getFollowUpWindowHours(assessment.riskLevel);
+  if (windowHours == null) {
+    return {
+      recommendedAt: null,
+      status: "none",
+      recommendedWindowHours: null
+    };
+  }
+
+  return {
+    recommendedAt: new Date(now.getTime() + windowHours * 60 * 60 * 1000).toISOString(),
+    status: "scheduled",
+    recommendedWindowHours: windowHours
+  };
+}
+
+function detectWorseningText(record) {
+  const text = [record.symptomChange, record.note]
+    .map((value) => String(value || "").toLowerCase())
+    .join(" ");
+
+  const worseningWords = [
+    "worse", "worsening", "increasing", "harder", "tighter",
+    "加重", "恶化", "更严重", "越来越", "更痛", "更难受"
+  ];
+
+  return worseningWords.some((word) => text.includes(word));
+}
+
+function detectPossibleChestPain(record) {
+  const text = [record.symptomChange, record.note]
+    .map((value) => String(value || "").toLowerCase())
+    .join(" ");
+  return text.includes("chest pain") || text.includes("胸痛");
+}
+
+function detectPossibleBreathingDifficulty(record) {
+  const text = [record.symptomChange, record.note]
+    .map((value) => String(value || "").toLowerCase())
+    .join(" ");
+  return (
+    text.includes("shortness of breath") ||
+    text.includes("breathing") ||
+    text.includes("呼吸困难") ||
+    text.includes("气短")
+  );
+}
+
+function shouldTriggerReassessment(session, record) {
+  const previousTemp = Number(session.assessment.maxTemperatureC || 0);
+  const newTemp = record.temperatureC == null ? null : Number(record.temperatureC);
+  const hotterThanBefore = newTemp != null && newTemp >= Math.max(previousTemp + 0.3, 38.5);
+  return hotterThanBefore || detectWorseningText(record) || detectPossibleChestPain(record) || detectPossibleBreathingDifficulty(record);
+}
+
+function buildReassessmentPayload(session, record) {
+  const previousMaxTemp =
+    session.assessment.maxTemperatureC == null || session.assessment.maxTemperatureC === ""
+      ? null
+      : Number(session.assessment.maxTemperatureC);
+
+  const derivedWorsening = detectWorseningText(record);
+  const chestPain = session.intake.chestPain || detectPossibleChestPain(record);
+  const breathingDifficulty =
+    detectPossibleBreathingDifficulty(record) && (!session.intake.breathingDifficulty || session.intake.breathingDifficulty === "none")
+      ? "moderate"
+      : session.intake.breathingDifficulty;
+
+  return {
+    ...session.intake,
+    symptomNotes: [session.intake.symptomNotes, record.symptomChange, record.note]
+      .filter(Boolean)
+      .join("；"),
+    symptomsWorsening: session.intake.symptomsWorsening || derivedWorsening,
+    maxTemperatureC:
+      record.temperatureC == null
+        ? previousMaxTemp
+        : previousMaxTemp == null
+          ? Number(record.temperatureC)
+          : Math.max(previousMaxTemp, Number(record.temperatureC)),
+    chestPain,
+    breathingDifficulty
+  };
+}
+
+function buildReassessmentDelta(previousRiskLevel, newRiskLevel) {
+  if (previousRiskLevel === newRiskLevel) {
+    return `Risk level remains ${newRiskLevel} after follow-up review.`;
+  }
+
+  return `Risk changed from ${previousRiskLevel} to ${newRiskLevel} after follow-up review.`;
+}
+
 export function createApp({
   dataFile = path.resolve(__dirname, "../data/carebridge.db")
 } = {}) {
@@ -280,7 +381,8 @@ export function createApp({
         priorityLevel: session.priorityLevel || 'normal',
         lastMessage: session.lastMessage,
         messageCount: session.messageCount,
-        unreadCount: session.unreadCount || 0
+        unreadCount: session.unreadCount || 0,
+        latestReassessment: session.latestReassessment || null
       }))
     });
   });
@@ -291,6 +393,14 @@ export function createApp({
       return response.status(404).json({ error: "Session not found" });
     }
     return response.json({ session });
+  });
+
+  app.get("/api/doctor/sessions/:sessionId/timeline", requireAuth("doctor"), async (request, response) => {
+    const session = await storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    return response.json({ timeline: storage.getTimeline(request.params.sessionId) });
   });
 
   app.patch("/api/doctor/sessions/:sessionId", requireAuth("doctor"), async (request, response) => {
@@ -390,7 +500,8 @@ export function createApp({
       intake: payload,
       assessment,
       summary,
-      followUps: []
+      followUps: [],
+      followUpPlan: buildFollowUpPlan(assessment)
     };
 
     await storage.createSession(session);
@@ -438,7 +549,67 @@ export function createApp({
       return response.status(404).json({ error: "Session not found" });
     }
 
-    return response.status(201).json(result);
+    let session = result.session;
+
+    if (shouldTriggerReassessment(session, record)) {
+      const reassessmentPayload = buildReassessmentPayload(session, record);
+      const updatedAssessment = assessTriage(reassessmentPayload);
+      const updatedSummary = buildVisitSummary(updatedAssessment);
+      const updatedPlan = buildFollowUpPlan(updatedAssessment);
+
+      await storage.createReassessment(request.params.sessionId, {
+        id: buildId("reassess"),
+        source: "follow_up",
+        previousRiskLevel: session.assessment.riskLevel,
+        newRiskLevel: updatedAssessment.riskLevel,
+        deltaSummary: buildReassessmentDelta(session.assessment.riskLevel, updatedAssessment.riskLevel),
+        snapshotData: {
+          followUpRecordId: record.id,
+          triggerTemperatureC: record.temperatureC,
+          triggerSymptomChange: record.symptomChange,
+          triggerNote: record.note
+        },
+        createdAt: new Date().toISOString()
+      });
+
+      session = await storage.updateSessionClinical(request.params.sessionId, {
+        assessment: updatedAssessment,
+        summary: updatedSummary,
+        followUpPlan: updatedPlan
+      });
+    }
+
+    return response.status(201).json({
+      ...result,
+      session
+    });
+  });
+
+  app.get("/api/sessions/:sessionId/follow-up-plan", async (request, response) => {
+    const session = await storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+
+    return response.json({ followUpPlan: session.followUpPlan });
+  });
+
+  app.get("/api/sessions/:sessionId/reassessments", async (request, response) => {
+    const session = await storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+
+    return response.json({ reassessments: storage.getReassessments(request.params.sessionId) });
+  });
+
+  app.get("/api/sessions/:sessionId/timeline", async (request, response) => {
+    const session = await storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+
+    return response.json({ timeline: storage.getTimeline(request.params.sessionId) });
   });
 
   // Admin API endpoints
@@ -480,7 +651,8 @@ export function createApp({
         redFlags: session.assessment.redFlags || [],
         adminNote: session.adminNote || '',
         adminStatus: session.adminStatus || 'new',
-        tags: session.tags || []
+        tags: session.tags || [],
+        latestReassessment: session.latestReassessment || null
       }))
     });
   });
@@ -510,6 +682,19 @@ export function createApp({
   app.get("/api/admin/queues", requireAuth("admin"), async (_request, response) => {
     const queues = await storage.getAdminQueues();
     return response.json(queues);
+  });
+
+  app.get("/api/admin/sla", requireAuth("admin"), async (_request, response) => {
+    const stats = await storage.getAdminSla();
+    return response.json(stats);
+  });
+
+  app.get("/api/admin/sessions/:sessionId/timeline", requireAuth("admin"), async (request, response) => {
+    const session = await storage.getSession(request.params.sessionId);
+    if (!session) {
+      return response.status(404).json({ error: "Session not found" });
+    }
+    return response.json({ timeline: storage.getTimeline(request.params.sessionId) });
   });
 
   app.all("/api/*path", (_request, response) => {

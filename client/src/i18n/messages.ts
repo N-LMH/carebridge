@@ -456,6 +456,42 @@ export const messages = {
       zh: '下一步行动',
       en: 'What To Do Next'
     },
+    followUpPlanTitle: {
+      zh: '建议复查时间',
+      en: 'Recommended Follow-up Time'
+    },
+    followUpPlanScheduled: {
+      zh: '建议在 {hours} 小时内补记一次症状变化',
+      en: 'Add another symptom update within {hours} hours'
+    },
+    followUpPlanCompleted: {
+      zh: '本轮建议随访已完成',
+      en: 'This recommended follow-up has been completed'
+    },
+    followUpPlanOverdue: {
+      zh: '建议随访时间已过，建议尽快补记当前状态',
+      en: 'The recommended follow-up time has passed. Please update the current status soon.'
+    },
+    followUpPlanEmergency: {
+      zh: '当前优先事项是立即线下就医，不建议等待常规随访',
+      en: 'The priority is immediate in-person care rather than waiting for a routine follow-up.'
+    },
+    followUpDueAt: {
+      zh: '建议时间：{time}',
+      en: 'Suggested time: {time}'
+    },
+    reassessmentTitle: {
+      zh: '随访后风险更新',
+      en: 'Risk Update After Follow-up'
+    },
+    reassessmentChanged: {
+      zh: '风险等级已从 {from} 更新为 {to}',
+      en: 'Risk level changed from {from} to {to}'
+    },
+    reassessmentUnchanged: {
+      zh: '系统已根据随访重新评估，当前仍为 {level}',
+      en: 'The case was reassessed after follow-up and remains at {level}'
+    },
     preparationChecklist: {
       zh: '就诊准备清单',
       en: 'Visit Preparation Checklist'
@@ -755,6 +791,22 @@ export const messages = {
     conversationHint: {
       zh: '可在这里补充症状变化或向医生说明新的担忧，医生回复后会同步显示。',
       en: 'Use this thread to share symptom changes or new concerns. Doctor replies will appear here.'
+    },
+    nextCheckTitle: {
+      zh: '下一次建议记录',
+      en: 'Next Recommended Check-in'
+    },
+    nextCheckCompleted: {
+      zh: '本轮随访建议已完成，可继续按需记录。',
+      en: 'This follow-up recommendation is complete. You can continue logging updates as needed.'
+    },
+    nextCheckPending: {
+      zh: '建议在 {time} 前后补记一次状态变化。',
+      en: 'We recommend adding another update around {time}.'
+    },
+    reassessmentNotice: {
+      zh: '本次随访已触发系统重评估。',
+      en: 'This follow-up triggered a system reassessment.'
     },
     reloadMessages: {
       zh: '刷新消息',
@@ -1143,6 +1195,14 @@ export const messages = {
       zh: '最近更新',
       en: 'Recently Updated'
     },
+    queueOverdueDoctorReply: {
+      zh: '医生回复超时',
+      en: 'Overdue Doctor Reply'
+    },
+    queueRiskUpgraded: {
+      zh: '近期风险升级',
+      en: 'Recent Risk Upgrades'
+    },
     noHighRisk: {
       zh: '近24小时无高风险病例',
       en: 'No high-risk cases in the last 24 hours'
@@ -1171,6 +1231,30 @@ export const messages = {
     operationalSummary: {
       zh: '运营摘要',
       en: 'Operational Summary'
+    },
+    slaTitle: {
+      zh: '服务时效',
+      en: 'Service SLA'
+    },
+    slaHighRiskOnTime: {
+      zh: '高风险按时审阅',
+      en: 'High-Risk Reviewed On Time'
+    },
+    slaHighRiskLate: {
+      zh: '高风险超时审阅',
+      en: 'High-Risk Reviewed Late'
+    },
+    slaWaitingDoctorOverdue: {
+      zh: '待医生回复超时',
+      en: 'Waiting Doctor Reply Overdue'
+    },
+    slaRecentRiskUpgrades: {
+      zh: '24小时风险升级',
+      en: 'Risk Upgrades (24h)'
+    },
+    slaAvgReviewMinutes: {
+      zh: '高风险平均审阅分钟',
+      en: 'Avg High-Risk Review Minutes'
     },
     riskClassificationSummary: {
       zh: '风险分类摘要',
@@ -1450,6 +1534,34 @@ export const messages = {
     quickPrompts: {
       zh: '快捷提问',
       en: 'Quick Prompts'
+    },
+    quickTemplateRespiratory: {
+      zh: '呼吸道模板',
+      en: 'Respiratory Template'
+    },
+    quickTemplateFever: {
+      zh: '发热模板',
+      en: 'Fever Template'
+    },
+    quickTemplateChestPain: {
+      zh: '胸痛模板',
+      en: 'Chest Pain Template'
+    },
+    quickTemplateFollowup: {
+      zh: '复诊模板',
+      en: 'Follow-up Template'
+    },
+    riskUpgraded: {
+      zh: '风险升级',
+      en: 'Risk Upgraded'
+    },
+    timelineTitle: {
+      zh: '病例时间线',
+      en: 'Case Timeline'
+    },
+    timelineEmpty: {
+      zh: '暂无时间线事件',
+      en: 'No timeline events yet'
     },
     promptDuration: {
       zh: '请问症状持续多长时间了？',

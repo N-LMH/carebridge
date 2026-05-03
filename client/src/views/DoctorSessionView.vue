@@ -42,6 +42,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
               {{ t('doctor.triageInterpretation') }}
             </h2>
+            <div v-if="session.latestReassessment" class="upgrade-summary" :class="{ 'upgrade-summary--changed': hasRiskUpgrade }">
+              <strong>{{ t('doctor.riskUpgraded') }}</strong>
+              <span>{{ reassessmentSummary }}</span>
+            </div>
             <div class="interpretation-grid">
               <div class="interp-block">
                 <h3 class="interp-label">{{ t('doctor.whyThisLevel') }}</h3>
@@ -172,6 +176,26 @@
               </div>
             </div>
           </div>
+
+          <div class="detail-card">
+            <h2 class="detail-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+              {{ t('doctor.timelineTitle') }}
+            </h2>
+            <div v-if="!session.timeline?.length" class="messages-empty">{{ t('doctor.timelineEmpty') }}</div>
+            <div v-else class="timeline-list">
+              <div v-for="event in session.timeline" :key="event.id" class="timeline-item">
+                <div class="timeline-item-dot"></div>
+                <div class="timeline-item-body">
+                  <div class="timeline-item-top">
+                    <strong>{{ timelineTitle(event.type) }}</strong>
+                    <span class="timeline-item-time">{{ formatDate(event.timestamp) }}</span>
+                  </div>
+                  <p class="timeline-item-text">{{ event.description }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="detail-sidebar">
@@ -252,12 +276,21 @@
 
             <div class="quick-prompts">
               <span class="quick-prompts-label">{{ t('doctor.quickPrompts') }}</span>
-              <div class="quick-prompts-list">
-                <button type="button" class="quick-prompt-btn" @click="insertPrompt('promptDuration')">{{ t('doctor.promptDuration') }}</button>
-                <button type="button" class="quick-prompt-btn" @click="insertPrompt('promptWorsened')">{{ t('doctor.promptWorsened') }}</button>
-                <button type="button" class="quick-prompt-btn" @click="insertPrompt('promptMedication')">{{ t('doctor.promptMedication') }}</button>
-                <button type="button" class="quick-prompt-btn" @click="insertPrompt('promptWarningSigns')">{{ t('doctor.promptWarningSigns') }}</button>
-                <button type="button" class="quick-prompt-btn" @click="insertPrompt('promptVisitTiming')">{{ t('doctor.promptVisitTiming') }}</button>
+              <div class="template-groups">
+                <div v-for="group in quickTemplates" :key="group.label" class="template-group">
+                  <span class="template-group-label">{{ group.label }}</span>
+                  <div class="quick-prompts-list">
+                    <button
+                      v-for="prompt in group.prompts"
+                      :key="prompt.key"
+                      type="button"
+                      class="quick-prompt-btn"
+                      @click="insertPrompt(prompt.key)"
+                    >
+                      {{ t(`doctor.${prompt.key}`) }}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -312,6 +345,41 @@ const noteStatus = ref('')
 const doctorStatusLabel = computed(() => localizeDoctorStatus(doctorStatusValue.value, locale.value))
 const convLabel = computed(() => localizeConversationState(session.value?.conversationState || 'none', locale.value))
 const priorityLabel = computed(() => localizePriority(priorityValue.value, locale.value))
+const hasRiskUpgrade = computed(() =>
+  !!session.value?.latestReassessment &&
+  session.value.latestReassessment.previousRiskLevel !== session.value.latestReassessment.newRiskLevel
+)
+const reassessmentSummary = computed(() => {
+  const latest = session.value?.latestReassessment
+  if (!latest) return ''
+  if (latest.previousRiskLevel === latest.newRiskLevel) {
+    return `${latest.newRiskLevel} · ${latest.deltaSummary}`
+  }
+  return `${latest.previousRiskLevel} → ${latest.newRiskLevel} · ${latest.deltaSummary}`
+})
+
+const quickTemplates = computed(() => [
+  {
+    label: t('doctor.quickTemplateRespiratory'),
+    prompts: [
+      { key: 'promptDuration' },
+      { key: 'promptWorsened' }
+    ]
+  },
+  {
+    label: t('doctor.quickTemplateFever'),
+    prompts: [
+      { key: 'promptMedication' },
+      { key: 'promptWarningSigns' }
+    ]
+  },
+  {
+    label: t('doctor.quickTemplateFollowup'),
+    prompts: [
+      { key: 'promptVisitTiming' }
+    ]
+  }
+])
 
 const riskClass = computed(() => {
   const level = session.value?.assessment?.riskLevel as RiskLevel
@@ -367,6 +435,19 @@ function formatDate(iso: string) {
   if (!iso) return '—'
   const d = new Date(iso)
   return d.toLocaleDateString(locale.value === 'zh' ? 'zh-CN' : 'en-US') + ' ' + d.toLocaleTimeString(locale.value === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+function timelineTitle(type: string) {
+  const map: Record<string, string> = {
+    triage_created: locale.value === 'zh' ? '首次分诊' : 'Initial Triage',
+    follow_up_added: locale.value === 'zh' ? '新增随访' : 'Follow-up Added',
+    patient_message_sent: locale.value === 'zh' ? '患者消息' : 'Patient Message',
+    doctor_message_sent: locale.value === 'zh' ? '医生消息' : 'Doctor Message',
+    reassessment_created: locale.value === 'zh' ? '系统重评估' : 'System Reassessment',
+    reviewed: locale.value === 'zh' ? '进入审核/审阅' : 'Entered Review',
+    resolved: locale.value === 'zh' ? '病例已关闭' : 'Case Resolved'
+  }
+  return map[type] || type
 }
 
 function tempClass(temp: number): string {
@@ -634,6 +715,23 @@ onMounted(async () => {
   border-radius: var(--radius-md);
 }
 
+.upgrade-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  color: var(--text-secondary);
+}
+
+.upgrade-summary--changed {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
 .interp-label {
   font-size: var(--text-xs);
   font-weight: 700;
@@ -797,6 +895,56 @@ onMounted(async () => {
   margin-right: var(--space-1);
 }
 
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.timeline-item {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.timeline-item-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 6px;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+.timeline-item-body {
+  flex: 1;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.timeline-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.timeline-item-top strong {
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.timeline-item-time {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.timeline-item-text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
 .temp-high { color: var(--c-error); font-weight: 600; }
 .temp-elevated { color: var(--c-warning); font-weight: 600; }
 .temp-normal { color: var(--c-success); }
@@ -925,6 +1073,24 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
+}
+
+.template-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.template-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.template-group-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
 .quick-prompt-btn {

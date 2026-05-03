@@ -122,6 +122,38 @@ export interface FollowUpRecord {
   note: string
 }
 
+export interface FollowUpPlan {
+  recommendedAt: string | null
+  status: 'none' | 'scheduled' | 'completed' | 'overdue'
+  recommendedWindowHours: number | null
+}
+
+export interface Reassessment {
+  id: string
+  sessionId: string
+  source: string
+  previousRiskLevel: RiskLevel
+  newRiskLevel: RiskLevel
+  deltaSummary: string
+  snapshotData: {
+    followUpRecordId?: string
+    triggerTemperatureC?: number | null
+    triggerSymptomChange?: string
+    triggerNote?: string
+  }
+  createdAt: string
+}
+
+export interface TimelineEvent {
+  id: string
+  type: string
+  timestamp: string
+  title: string
+  description: string
+  actor: 'system' | 'patient' | 'doctor' | 'admin'
+  metadata?: Record<string, string | number | boolean | null>
+}
+
 // Admin status types
 export type AdminStatus = 'new' | 'reviewed' | 'urgent' | 'resolved' | 'archived'
 
@@ -142,6 +174,7 @@ export interface Session {
   assessment: RiskAssessment
   summary: VisitSummary
   followUps: FollowUpRecord[]
+  followUpPlan?: FollowUpPlan
   adminNote?: string
   adminStatus?: AdminStatus
   tags?: string[]
@@ -153,6 +186,8 @@ export interface Session {
   reviewedAt?: string | null
   resolvedAt?: string | null
   priorityLevel?: PriorityLevel
+  latestReassessment?: Reassessment | null
+  timeline?: TimelineEvent[]
 }
 
 // API 响应
@@ -192,6 +227,7 @@ export interface AdminSessionSummary extends SessionSummary {
   adminNote: string
   adminStatus: AdminStatus
   tags: string[]
+  latestReassessment?: Reassessment | null
 }
 
 // Admin stats
@@ -200,6 +236,14 @@ export interface AdminStats {
   riskDistribution: Record<string, number>
   statusDistribution: Record<string, number>
   highRiskRecent: number
+}
+
+export interface AdminSlaStats {
+  highRiskReviewedOnTime: number
+  highRiskReviewedLate: number
+  waitingDoctorReplyOverdue: number
+  recentRiskUpgrades: number
+  avgHighRiskReviewMinutes: number | null
 }
 
 // 预设
@@ -258,6 +302,7 @@ export interface DoctorSessionSummary extends SessionSummary {
   lastMessage: { content: string; createdAt: string; senderType: SenderType } | null
   messageCount: number
   unreadCount: number
+  latestReassessment?: Reassessment | null
 }
 
 export interface DoctorSession extends Session {

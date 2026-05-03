@@ -11,6 +11,7 @@
       </div>
       <div class="case-badges">
         <span class="risk-badge" :class="riskClass(session.riskLevel)">{{ session.riskLevel }}</span>
+        <span v-if="hasRiskUpgrade" class="upgrade-badge">{{ t('doctor.riskUpgraded') }}</span>
         <span class="status-badge" :class="statusClass">{{ doctorStatusLabel }}</span>
         <span v-if="session.priorityLevel === 'urgent' || session.priorityLevel === 'high'" class="priority-badge" :class="priorityClass">
           {{ priorityLabel }}
@@ -54,6 +55,10 @@ const props = defineProps<{
 const doctorStatusLabel = computed(() => localizeDoctorStatus(props.session.doctorStatus, locale.value))
 const convLabel = computed(() => localizeConversationState(props.session.conversationState, locale.value))
 const priorityLabel = computed(() => localizePriority(props.session.priorityLevel, locale.value))
+const hasRiskUpgrade = computed(() =>
+  !!props.session.latestReassessment &&
+  props.session.latestReassessment.previousRiskLevel !== props.session.latestReassessment.newRiskLevel
+)
 
 const statusClass = computed(() => {
   const map: Record<string, string> = {
@@ -175,6 +180,17 @@ function formatDate(iso: string) {
   font-size: var(--text-xs);
   font-weight: 700;
   white-space: nowrap;
+}
+
+.upgrade-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--c-error);
 }
 
 .priority--urgent { background: rgba(239, 68, 68, 0.15); color: var(--c-error); }

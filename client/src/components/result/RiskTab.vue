@@ -15,6 +15,19 @@
       </div>
     </div>
 
+    <div class="support-row">
+      <div class="support-card">
+        <h4 class="support-title">{{ t('result.followUpPlanTitle') }}</h4>
+        <p class="support-text">{{ followUpPlanMessage }}</p>
+        <p v-if="followUpDueLabel" class="support-meta">{{ followUpDueLabel }}</p>
+      </div>
+
+      <div v-if="latestReassessment" class="support-card support-card--highlight">
+        <h4 class="support-title">{{ t('result.reassessmentTitle') }}</h4>
+        <p class="support-text">{{ reassessmentMessage }}</p>
+      </div>
+    </div>
+
     <div class="risk-split">
       <div class="risk-knowledge">
         <h4 class="risk-split-title">
@@ -107,9 +120,11 @@ import { useTriageStore } from '@/stores/triage'
 import type { RiskLevel, ScoreBreakdown, ScoreDetail } from '@/types'
 
 const triageStore = useTriageStore()
-const { t } = useI18n()
+const { locale, t } = useI18n()
 
 const assessment = computed(() => triageStore.activeSession?.assessment)
+const followUpPlan = computed(() => triageStore.activeSession?.followUpPlan)
+const latestReassessment = computed(() => triageStore.activeSession?.latestReassessment)
 
 const riskClassMap: Record<RiskLevel, string> = {
   'Level 1': 'level-1',
@@ -171,6 +186,62 @@ const fillClass = computed(() => {
   if (s >= 7) return 'fill-2'
   if (s >= 4) return 'fill-3'
   return 'fill-4'
+})
+
+const effectivePlanStatus = computed(() => {
+  const plan = followUpPlan.value
+  if (!plan) return 'none'
+  if (
+    plan.status === 'scheduled' &&
+    plan.recommendedAt &&
+    new Date(plan.recommendedAt).getTime() < Date.now()
+  ) {
+    return 'overdue'
+  }
+  return plan.status
+})
+
+const followUpPlanMessage = computed(() => {
+  const plan = followUpPlan.value
+  if (!plan || assessment.value?.riskLevel === 'Level 1') {
+    return t('result.followUpPlanEmergency')
+  }
+
+  if (effectivePlanStatus.value === 'completed') {
+    return t('result.followUpPlanCompleted')
+  }
+
+  if (effectivePlanStatus.value === 'overdue') {
+    return t('result.followUpPlanOverdue')
+  }
+
+  return t('result.followUpPlanScheduled', {
+    hours: plan.recommendedWindowHours ?? 24
+  })
+})
+
+const followUpDueLabel = computed(() => {
+  const plan = followUpPlan.value
+  if (!plan?.recommendedAt || assessment.value?.riskLevel === 'Level 1') return ''
+  return t('result.followUpDueAt', {
+    time: new Date(plan.recommendedAt).toLocaleString(locale.value === 'zh' ? 'zh-CN' : 'en-US')
+  })
+})
+
+const reassessmentMessage = computed(() => {
+  const latest = latestReassessment.value
+  if (!latest) return ''
+
+  if (latest.previousRiskLevel !== latest.newRiskLevel) {
+    return t('result.reassessmentChanged', {
+      from: latest.previousRiskLevel,
+      to: latest.newRiskLevel
+    })
+  }
+
+  return t('result.reassessmentUnchanged', {
+    level: latest.newRiskLevel
+  })
 })
 
 function formatDetail(d: ScoreDetail): string {
@@ -288,6 +359,49 @@ function formatDetail(d: ScoreDetail): string {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-6);
+}
+
+.support-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .support-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.support-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+}
+
+.support-card--highlight {
+  background: var(--c-primary-50);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.support-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--c-text);
+  margin-bottom: var(--space-2);
+}
+
+.support-text {
+  font-size: var(--text-sm);
+  color: var(--c-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.support-meta {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--c-text-muted);
 }
 
 @media (min-width: 768px) {

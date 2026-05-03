@@ -95,6 +95,42 @@ describe("CareBridge API", () => {
       expect(response.body.session.assessment.actionLabel).toBe(
         "24小时内线下就医"
       );
+      expect(response.body.session.followUpPlan.recommendedWindowHours).toBe(12);
+      expect(response.body.session.followUpPlan.status).toBe("scheduled");
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("returns the generated follow-up plan for a session", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const triage = await client.post("/api/triage").send({
+        patientName: "Plan Test",
+        age: 22,
+        gender: "male",
+        region: "city",
+        symptoms: ["sore throat"],
+        symptomNotes: "Mild sore throat since this morning",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.2,
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false
+      });
+
+      const sessionId = triage.body.session.id;
+      const response = await client.get(`/api/sessions/${sessionId}/follow-up-plan`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.followUpPlan.status).toBe("scheduled");
+      expect(response.body.followUpPlan.recommendedWindowHours).toBe(36);
+      expect(response.body.followUpPlan.recommendedAt).toBeTruthy();
     } finally {
       await cleanupDb(filePath);
     }
@@ -142,6 +178,62 @@ describe("CareBridge API", () => {
       expect(listFollowUps.status).toBe(200);
       expect(listFollowUps.body.session.followUps).toHaveLength(1);
       expect(listFollowUps.body.session.followUps[0].note).toBe("No new symptoms");
+      expect(listFollowUps.body.session.followUpPlan.status).toBe("completed");
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("reassesses a session after a worsening follow-up and stores reassessment history", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const triage = await client.post("/api/triage").send({
+        patientName: "Reassess Test",
+        age: 30,
+        gender: "female",
+        region: "township",
+        symptoms: ["fever", "cough"],
+        symptomNotes: "Low fever and cough since yesterday",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.6,
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        coughType: "dry",
+        nightSymptoms: "no",
+        chillsOrSweats: "none"
+      });
+
+      const sessionId = triage.body.session.id;
+      expect(triage.body.session.assessment.riskLevel).toBe("Level 3");
+
+      const followUp = await client
+        .post(`/api/sessions/${sessionId}/follow-ups`)
+        .send({
+          temperatureC: 39.2,
+          symptomChange: "Symptoms are getting worse today",
+          medicationTaken: "acetaminophen",
+          note: "Breathing feels harder than before"
+        });
+
+      expect(followUp.status).toBe(201);
+      expect(followUp.body.session.latestReassessment).toBeTruthy();
+      expect(followUp.body.session.assessment.riskLevel).toBe("Level 1");
+
+      const reassessments = await client.get(`/api/sessions/${sessionId}/reassessments`);
+      expect(reassessments.status).toBe(200);
+      expect(reassessments.body.reassessments).toHaveLength(1);
+      expect(reassessments.body.reassessments[0].previousRiskLevel).toBe("Level 3");
+      expect(reassessments.body.reassessments[0].newRiskLevel).toBe("Level 1");
+
+      const timeline = await client.get(`/api/sessions/${sessionId}/timeline`);
+      expect(timeline.status).toBe(200);
+      expect(timeline.body.timeline.some((event) => event.type === "reassessment_created")).toBe(true);
     } finally {
       await cleanupDb(filePath);
     }
@@ -527,8 +619,64 @@ describe("CareBridge API", () => {
       expect(response.body.newlyCreated).toBeDefined();
       expect(response.body.overdueStuck).toBeDefined();
       expect(response.body.recentlyUpdated).toBeDefined();
+      expect(response.body.overdueDoctorReply).toBeDefined();
+      expect(response.body.riskUpgraded).toBeDefined();
       expect(response.body.urgentAdminAttention.some((session) => session.id === sessionId)).toBe(true);
       expect(response.body.highRiskUnresolved.some((session) => session.id === sessionId)).toBe(true);
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("admin SLA endpoint returns operational timing metrics", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const adminToken = await loginAs(client, "admin", "admin123");
+      const doctorToken = await loginAs(client, "doctor", "doctor123");
+
+      const triage = await client.post("/api/triage").send({
+        patientName: "SLA Test",
+        age: 67,
+        gender: "male",
+        region: "county",
+        symptoms: ["fever", "cough", "chest tightness"],
+        symptomNotes: "worsening symptoms",
+        symptomDays: 4,
+        severity: "severe",
+        breathingDifficulty: "moderate",
+        symptomsWorsening: true,
+        maxTemperatureC: 39.1,
+        chillsOrSweats: "both",
+        chronicConditions: ["hypertension"],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        coughType: "productive",
+        nightSymptoms: "yes",
+        painRadiation: "none",
+        activityRelation: "both",
+        consciousnessChanges: "no",
+        visionChanges: "no",
+        numbness: "no"
+      });
+
+      const sessionId = triage.body.session.id;
+      await client
+        .patch(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${doctorToken}`)
+        .send({ doctorStatus: "under_review" });
+
+      const response = await client
+        .get("/api/admin/sla")
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(typeof response.body.highRiskReviewedOnTime).toBe("number");
+      expect(typeof response.body.highRiskReviewedLate).toBe("number");
+      expect(typeof response.body.waitingDoctorReplyOverdue).toBe("number");
+      expect(typeof response.body.recentRiskUpgrades).toBe("number");
+      expect(response.body.avgHighRiskReviewMinutes === null || typeof response.body.avgHighRiskReviewMinutes === "number").toBe(true);
     } finally {
       await cleanupDb(filePath);
     }
@@ -890,6 +1038,47 @@ describe("CareBridge API", () => {
       expect(response.body.stats.highRisk).toBe(0);
       expect(response.body.queues).toBeDefined();
       expect(response.body.queues.recent).toHaveLength(1);
+    } finally {
+      await cleanupDb(filePath);
+    }
+  });
+
+  it("doctor session detail includes timeline events", async () => {
+    const { client, filePath } = await buildClient();
+
+    try {
+      const token = await loginAs(client, "doctor", "doctor123");
+
+      const triage = await client.post("/api/triage").send({
+        patientName: "Timeline Test",
+        age: 33,
+        gender: "female",
+        region: "city",
+        symptoms: ["fever"],
+        symptomNotes: "fever",
+        symptomDays: 1,
+        severity: "mild",
+        breathingDifficulty: "none",
+        symptomsWorsening: false,
+        maxTemperatureC: 37.8,
+        chronicConditions: [],
+        medications: "none",
+        allergies: "none",
+        chestPain: false,
+        chillsOrSweats: "none"
+      });
+
+      const sessionId = triage.body.session.id;
+      await client.post(`/api/sessions/${sessionId}/messages`).send({ content: "Patient follow-up message" });
+
+      const detail = await client
+        .get(`/api/doctor/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${token}`);
+
+      expect(detail.status).toBe(200);
+      expect(Array.isArray(detail.body.session.timeline)).toBe(true);
+      expect(detail.body.session.timeline.some((event) => event.type === "triage_created")).toBe(true);
+      expect(detail.body.session.timeline.some((event) => event.type === "patient_message_sent")).toBe(true);
     } finally {
       await cleanupDb(filePath);
     }

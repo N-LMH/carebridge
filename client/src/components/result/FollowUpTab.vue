@@ -1,5 +1,11 @@
 <template>
   <div class="followup-tab">
+    <div v-if="followUpPlanCardVisible" class="next-check-card">
+      <h4 class="next-check-title">{{ t('followupLog.nextCheckTitle') }}</h4>
+      <p class="next-check-text">{{ nextCheckMessage }}</p>
+      <p v-if="latestReassessment" class="next-check-note">{{ t('followupLog.reassessmentNotice') }}</p>
+    </div>
+
     <form @submit.prevent="handleSave" class="followup-form" novalidate>
       <label class="field">
         <span class="field-label">{{ t('followupLog.temperature') }}</span>
@@ -175,6 +181,8 @@ const form = reactive({
 })
 
 const followUps = computed<FollowUpRecord[]>(() => triageStore.activeSession?.followUps || [])
+const followUpPlan = computed(() => triageStore.activeSession?.followUpPlan)
+const latestReassessment = computed(() => triageStore.activeSession?.latestReassessment)
 
 const statusClass = computed(() => ({
   'status--success': statusType.value === 'success',
@@ -195,6 +203,34 @@ const trendLabel = computed(() => {
   if (followUps.value.length < 2) return t('followupLog.trendUnknown')
   const trend = detectTrend()
   return t(`followupLog.trend${trend.charAt(0).toUpperCase() + trend.slice(1)}`)
+})
+
+const followUpPlanCardVisible = computed(() => !!followUpPlan.value?.recommendedAt || followUpPlan.value?.status === 'completed')
+
+const nextCheckMessage = computed(() => {
+  const plan = followUpPlan.value
+  if (!plan) return ''
+
+  if (plan.status === 'completed') {
+    return t('followupLog.nextCheckCompleted')
+  }
+
+  const status =
+    plan.status === 'scheduled' && plan.recommendedAt && new Date(plan.recommendedAt).getTime() < Date.now()
+      ? 'overdue'
+      : plan.status
+
+  if (status === 'overdue') {
+    return t('result.followUpPlanOverdue')
+  }
+
+  if (!plan.recommendedAt) {
+    return t('result.followUpPlanEmergency')
+  }
+
+  return t('followupLog.nextCheckPending', {
+    time: new Date(plan.recommendedAt).toLocaleString(locale.value === 'zh' ? 'zh-CN' : 'en-US')
+  })
 })
 
 function detectTrend(): string {
@@ -331,6 +367,33 @@ watch(
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+}
+
+.next-check-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+}
+
+.next-check-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--c-text);
+  margin-bottom: var(--space-2);
+}
+
+.next-check-text {
+  font-size: var(--text-sm);
+  color: var(--c-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.next-check-note {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--c-primary);
+  font-weight: 600;
 }
 
 .followup-form {

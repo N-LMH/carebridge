@@ -154,6 +154,26 @@
         </div>
       </div>
 
+      <div class="ops-summary-section">
+        <h3 class="ops-summary-title">{{ t('admin.slaTitle') }}</h3>
+        <div class="ops-summary-grid">
+          <div class="ops-summary-card">
+            <span class="ops-summary-label">{{ t('admin.slaAvgReviewMinutes') }}</span>
+            <div class="ops-summary-content">
+              <span class="ops-action-label">{{ reviewMinutesLabel }}</span>
+            </div>
+          </div>
+          <div class="ops-summary-card">
+            <span class="ops-summary-label">{{ t('admin.slaWaitingDoctorOverdue') }}</span>
+            <div class="ops-summary-content">
+              <span class="status-chip" :class="doctorReplyOverdue ? 'status--urgent' : 'status--reviewed'">
+                {{ doctorReplyOverdue ? 'Yes' : 'No' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="detail-grid">
         <div class="detail-card">
           <h2 class="detail-card-title">
@@ -294,6 +314,23 @@
             </div>
           </div>
         </div>
+
+        <div class="detail-card">
+          <h2 class="detail-card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+            {{ t('admin.timelineTitle') }}
+          </h2>
+          <div v-if="timeline.length === 0" class="detail-empty">{{ t('admin.timelineEmpty') }}</div>
+          <div v-else class="detail-followups">
+            <div v-for="event in timeline" :key="event.id" class="detail-followup">
+              <span class="detail-followup-time">{{ formatDate(event.timestamp) }}</span>
+              <div class="detail-followup-body">
+                <span class="detail-followup-item"><strong>{{ timelineTitle(event.type) }}</strong></span>
+                <span class="detail-followup-item">{{ event.description }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -305,12 +342,13 @@ import { useRoute } from 'vue-router'
 import { useI18n } from '@/composables/useI18n'
 import { localizeSession } from '@/i18n/medical'
 import { api } from '@/services/api'
-import type { Session, AdminStatus } from '@/types'
+import type { Session, AdminStatus, TimelineEvent } from '@/types'
 
 const { locale, t } = useI18n()
 const route = useRoute()
 
 const rawSession = ref<Session | null>(null)
+const timeline = ref<TimelineEvent[]>([])
 const loading = ref(true)
 const adminNote = ref('')
 const adminStatus = ref<AdminStatus>('new')
@@ -352,6 +390,18 @@ const isCaseUnresolved = computed(() => {
   return adminStatus.value !== 'resolved' && adminStatus.value !== 'archived'
 })
 
+const reviewMinutesLabel = computed(() => {
+  if (!rawSession.value?.reviewedAt) return '—'
+  const minutes = Math.round((new Date(rawSession.value.reviewedAt).getTime() - new Date(rawSession.value.createdAt).getTime()) / (1000 * 60))
+  return `${minutes}`
+})
+
+const doctorReplyOverdue = computed(() => {
+  if (!rawSession.value?.lastPatientMessageAt || rawSession.value?.lastDoctorMessageAt) return false
+  const hours = (Date.now() - new Date(rawSession.value.lastPatientMessageAt).getTime()) / (1000 * 60 * 60)
+  return hours > 2
+})
+
 function statusClass(status: AdminStatus) {
   const map: Record<string, string> = {
     new: 'status--new',
@@ -387,6 +437,19 @@ function formatDate(iso: string) {
   return d.toLocaleDateString(locale.value === 'zh' ? 'zh-CN' : 'en-US') + ' ' + d.toLocaleTimeString(locale.value === 'zh' ? 'zh-CN' : 'en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
+function timelineTitle(type: string) {
+  const map: Record<string, string> = {
+    triage_created: locale.value === 'zh' ? '首次分诊' : 'Initial Triage',
+    follow_up_added: locale.value === 'zh' ? '新增随访' : 'Follow-up Added',
+    patient_message_sent: locale.value === 'zh' ? '患者消息' : 'Patient Message',
+    doctor_message_sent: locale.value === 'zh' ? '医生消息' : 'Doctor Message',
+    reassessment_created: locale.value === 'zh' ? '系统重评估' : 'System Reassessment',
+    reviewed: locale.value === 'zh' ? '进入审核/审阅' : 'Entered Review',
+    resolved: locale.value === 'zh' ? '病例已关闭' : 'Case Resolved'
+  }
+  return map[type] || type
+}
+
 async function saveNote() {
   const id = route.params.id as string
   try {
@@ -414,8 +477,11 @@ onMounted(async () => {
     rawSession.value = data.session
     adminNote.value = data.session.adminNote || ''
     adminStatus.value = (data.session.adminStatus || 'new') as AdminStatus
+    const timelineData = await api.getAdminSessionTimeline(id)
+    timeline.value = timelineData.timeline
   } catch {
     rawSession.value = null
+    timeline.value = []
   } finally {
     loading.value = false
   }

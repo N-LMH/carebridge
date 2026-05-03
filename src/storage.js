@@ -64,6 +64,9 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       assessment_data TEXT NOT NULL,
       summary_data TEXT NOT NULL,
       follow_ups TEXT NOT NULL DEFAULT '[]',
+      next_follow_up_at TEXT,
+      follow_up_plan_status TEXT NOT NULL DEFAULT 'none',
+      follow_up_window_hours INTEGER,
       admin_note TEXT NOT NULL DEFAULT '',
       admin_status TEXT NOT NULL DEFAULT 'new',
       tags TEXT NOT NULL DEFAULT '[]'
@@ -74,6 +77,9 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
   const columns = db.prepare("PRAGMA table_info(sessions)").all().map(c => c.name);
 
   const doctorColumns = [
+    { name: 'next_follow_up_at', def: "ALTER TABLE sessions ADD COLUMN next_follow_up_at TEXT" },
+    { name: 'follow_up_plan_status', def: "ALTER TABLE sessions ADD COLUMN follow_up_plan_status TEXT NOT NULL DEFAULT 'none'" },
+    { name: 'follow_up_window_hours', def: "ALTER TABLE sessions ADD COLUMN follow_up_window_hours INTEGER" },
     { name: 'doctor_status', def: "ALTER TABLE sessions ADD COLUMN doctor_status TEXT NOT NULL DEFAULT 'new'" },
     { name: 'doctor_note', def: "ALTER TABLE sessions ADD COLUMN doctor_note TEXT NOT NULL DEFAULT ''" },
     { name: 'conversation_state', def: "ALTER TABLE sessions ADD COLUMN conversation_state TEXT NOT NULL DEFAULT 'none'" },
@@ -121,6 +127,20 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reassessments (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      previous_risk_level TEXT NOT NULL,
+      new_risk_level TEXT NOT NULL,
+      delta_summary TEXT NOT NULL,
+      snapshot_data TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (session_id) REFERENCES sessions(id)
+    );
+  `);
+
   // Migration: add message columns if they don't exist
   const msgColumns = db.prepare("PRAGMA table_info(messages)").all().map(c => c.name);
   if (!msgColumns.includes('message_kind')) {
@@ -159,8 +179,8 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
   }
 
   const insertSession = db.prepare(`
-    INSERT OR IGNORE INTO sessions (id, created_at, patient_data, assessment_data, summary_data, follow_ups, admin_note, admin_status, tags, doctor_status, doctor_note, conversation_state, priority_level)
-    VALUES (@id, @createdAt, @patientData, @assessmentData, @summaryData, @followUps, @adminNote, @adminStatus, @tags, @doctorStatus, @doctorNote, @conversationState, @priorityLevel)
+    INSERT OR IGNORE INTO sessions (id, created_at, patient_data, assessment_data, summary_data, follow_ups, next_follow_up_at, follow_up_plan_status, follow_up_window_hours, admin_note, admin_status, tags, doctor_status, doctor_note, conversation_state, priority_level)
+    VALUES (@id, @createdAt, @patientData, @assessmentData, @summaryData, @followUps, @nextFollowUpAt, @followUpPlanStatus, @followUpWindowHours, @adminNote, @adminStatus, @tags, @doctorStatus, @doctorNote, @conversationState, @priorityLevel)
   `);
 
   const selectSession = db.prepare(`SELECT * FROM sessions WHERE id = ?`);
@@ -174,9 +194,140 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
   const updateFollowUps = db.prepare(`
     UPDATE sessions SET follow_ups = ? WHERE id = ?
   `);
+  const updateSessionClinical = db.prepare(`
+    UPDATE sessions
+    SET assessment_data = @assessmentData,
+        summary_data = @summaryData,
+        next_follow_up_at = @nextFollowUpAt,
+        follow_up_plan_status = @followUpPlanStatus,
+        follow_up_window_hours = @followUpWindowHours
+    WHERE id = @id
+  `);
   const updateUserPasswordHash = db.prepare(`
     UPDATE users SET password_hash = ? WHERE id = ?
   `);
+  const insertReassessment = db.prepare(`
+    INSERT INTO reassessments (id, session_id, source, previous_risk_level, new_risk_level, delta_summary, snapshot_data, created_at)
+    VALUES (@id, @sessionId, @source, @previousRiskLevel, @newRiskLevel, @deltaSummary, @snapshotData, @createdAt)
+  `);
+  const selectLatestReassessment = db.prepare(`
+    SELECT * FROM reassessments WHERE session_id = ? ORDER BY created_at DESC LIMIT 1
+  `);
+  const selectReassessments = db.prepare(`
+    SELECT * FROM reassessments WHERE session_id = ? ORDER BY created_at DESC
+  `);
+  const selectFirstDoctorMessage = db.prepare(`
+    SELECT * FROM messages WHERE session_id = ? AND sender_type = 'doctor' ORDER BY created_at ASC LIMIT 1
+  `);
+
+  function rowToReassessment(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      sessionId: row.session_id,
+      source: row.source,
+      previousRiskLevel: row.previous_risk_level,
+      newRiskLevel: row.new_risk_level,
+      deltaSummary: row.delta_summary,
+      snapshotData: JSON.parse(row.snapshot_data),
+      createdAt: row.created_at
+    };
+  }
+
+  function getTimeline(sessionId) {
+    const session = selectSession.get(sessionId);
+    if (!session) return [];
+
+    const sessionObj = rowToSession(session);
+    const events = [];
+
+    events.push({
+      id: `timeline_triage_${sessionObj.id}`,
+      type: 'triage_created',
+      timestamp: sessionObj.createdAt,
+      title: 'Triage created',
+      description: `${sessionObj.assessment.riskLevel} · ${sessionObj.assessment.actionLabel}`,
+      actor: 'system',
+      metadata: {
+        riskLevel: sessionObj.assessment.riskLevel
+      }
+    });
+
+    for (const followUp of sessionObj.followUps || []) {
+      events.push({
+        id: `timeline_followup_${followUp.id}`,
+        type: 'follow_up_added',
+        timestamp: followUp.createdAt,
+        title: 'Follow-up recorded',
+        description: followUp.symptomChange || followUp.note || 'Follow-up update recorded',
+        actor: 'patient',
+        metadata: {
+          temperatureC: followUp.temperatureC
+        }
+      });
+    }
+
+    for (const reassessment of selectReassessments.all(sessionId).map(rowToReassessment)) {
+      events.push({
+        id: `timeline_reassess_${reassessment.id}`,
+        type: 'reassessment_created',
+        timestamp: reassessment.createdAt,
+        title: 'Risk reassessed',
+        description: reassessment.deltaSummary,
+        actor: 'system',
+        metadata: {
+          previousRiskLevel: reassessment.previousRiskLevel,
+          newRiskLevel: reassessment.newRiskLevel
+        }
+      });
+    }
+
+    for (const message of this.getMessages(sessionId)) {
+      events.push({
+        id: `timeline_message_${message.id}`,
+        type: `${message.senderType}_message_sent`,
+        timestamp: message.createdAt,
+        title: message.senderType === 'doctor' ? 'Doctor message sent' : message.senderType === 'patient' ? 'Patient message sent' : 'System message sent',
+        description: message.content,
+        actor: message.senderType === 'doctor' ? 'doctor' : message.senderType === 'patient' ? 'patient' : 'system',
+        metadata: {
+          senderType: message.senderType
+        }
+      });
+    }
+
+    if (sessionObj.reviewedAt) {
+      events.push({
+        id: `timeline_reviewed_${sessionObj.id}`,
+        type: 'reviewed',
+        timestamp: sessionObj.reviewedAt,
+        title: 'Case reviewed',
+        description: 'The case entered review workflow.',
+        actor: 'admin',
+        metadata: {
+          adminStatus: sessionObj.adminStatus,
+          doctorStatus: sessionObj.doctorStatus
+        }
+      });
+    }
+
+    if (sessionObj.resolvedAt) {
+      events.push({
+        id: `timeline_resolved_${sessionObj.id}`,
+        type: 'resolved',
+        timestamp: sessionObj.resolvedAt,
+        title: 'Case resolved',
+        description: 'The case was marked resolved.',
+        actor: sessionObj.doctorStatus === 'resolved' ? 'doctor' : 'admin',
+        metadata: {
+          adminStatus: sessionObj.adminStatus,
+          doctorStatus: sessionObj.doctorStatus
+        }
+      });
+    }
+
+    return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
 
   function rowToSession(row) {
     return {
@@ -186,6 +337,11 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       assessment: JSON.parse(row.assessment_data),
       summary: JSON.parse(row.summary_data),
       followUps: JSON.parse(row.follow_ups),
+      followUpPlan: {
+        recommendedAt: row.next_follow_up_at || null,
+        status: row.follow_up_plan_status || 'none',
+        recommendedWindowHours: row.follow_up_window_hours == null ? null : Number(row.follow_up_window_hours)
+      },
       adminNote: row.admin_note || '',
       adminStatus: row.admin_status || 'new',
       tags: JSON.parse(row.tags || '[]'),
@@ -196,7 +352,8 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       lastDoctorMessageAt: row.last_doctor_message_at || null,
       reviewedAt: row.reviewed_at || null,
       resolvedAt: row.resolved_at || null,
-      priorityLevel: row.priority_level || 'normal'
+      priorityLevel: row.priority_level || 'normal',
+      latestReassessment: rowToReassessment(selectLatestReassessment.get(row.id))
     };
   }
 
@@ -208,6 +365,9 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       assessmentData: JSON.stringify(session.assessment),
       summaryData: JSON.stringify(session.summary),
       followUps: JSON.stringify(session.followUps || []),
+      nextFollowUpAt: session.followUpPlan?.recommendedAt || null,
+      followUpPlanStatus: session.followUpPlan?.status || 'none',
+      followUpWindowHours: session.followUpPlan?.recommendedWindowHours ?? null,
       adminNote: session.adminNote || '',
       adminStatus: session.adminStatus || 'new',
       tags: JSON.stringify(session.tags || []),
@@ -270,6 +430,9 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
     if (cols.includes('priority_level')) {
       try { db.prepare("UPDATE sessions SET priority_level = 'normal' WHERE priority_level IS NULL OR priority_level = ''").run(); } catch {}
     }
+    if (cols.includes('follow_up_plan_status')) {
+      try { db.prepare("UPDATE sessions SET follow_up_plan_status = 'none' WHERE follow_up_plan_status IS NULL OR follow_up_plan_status = ''").run(); } catch {}
+    }
     if (cols.includes('admin_status')) {
       try { db.prepare("UPDATE sessions SET admin_status = 'new' WHERE admin_status IS NULL OR admin_status = ''").run(); } catch {}
     }
@@ -304,8 +467,57 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       followUps.unshift(record);
       updateFollowUps.run(JSON.stringify(followUps), sessionId);
 
-      const session = rowToSession({ ...row, follow_ups: JSON.stringify(followUps) });
+      let planStatus = row.follow_up_plan_status || 'none';
+      if (planStatus === 'scheduled' || planStatus === 'overdue') {
+        planStatus = 'completed';
+        db.prepare("UPDATE sessions SET follow_up_plan_status = ? WHERE id = ?").run(planStatus, sessionId);
+      }
+
+      const session = rowToSession({
+        ...row,
+        follow_ups: JSON.stringify(followUps),
+        follow_up_plan_status: planStatus
+      });
       return { session, record };
+    },
+
+    async updateSessionClinical(sessionId, { assessment, summary, followUpPlan }) {
+      const row = selectSession.get(sessionId);
+      if (!row) return null;
+
+      updateSessionClinical.run({
+        id: sessionId,
+        assessmentData: JSON.stringify(assessment),
+        summaryData: JSON.stringify(summary),
+        nextFollowUpAt: followUpPlan?.recommendedAt || null,
+        followUpPlanStatus: followUpPlan?.status || 'none',
+        followUpWindowHours: followUpPlan?.recommendedWindowHours ?? null
+      });
+
+      const updated = selectSession.get(sessionId);
+      return updated ? rowToSession(updated) : null;
+    },
+
+    async createReassessment(sessionId, reassessment) {
+      insertReassessment.run({
+        id: reassessment.id,
+        sessionId,
+        source: reassessment.source,
+        previousRiskLevel: reassessment.previousRiskLevel,
+        newRiskLevel: reassessment.newRiskLevel,
+        deltaSummary: reassessment.deltaSummary,
+        snapshotData: JSON.stringify(reassessment.snapshotData),
+        createdAt: reassessment.createdAt
+      });
+      return reassessment;
+    },
+
+    getReassessments(sessionId) {
+      return selectReassessments.all(sessionId).map(rowToReassessment);
+    },
+
+    getTimeline(sessionId) {
+      return getTimeline.call(this, sessionId);
     },
 
     async searchSessions(query) {
@@ -570,7 +782,7 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
       const messages = this.getMessages(sessionId);
       // Mark patient messages as read by doctor
       this.markMessagesRead(sessionId, 'doctor');
-      return { ...session, messages };
+      return { ...session, messages, timeline: this.getTimeline(sessionId) };
     },
 
     async getAdminQueues() {
@@ -625,12 +837,77 @@ export function createStorage(dbPath, { legacyJsonPath } = {}) {
         })
         .slice(0, 10);
 
+      const overdueDoctorReply = enrichWithMessages(sessions)
+        .filter(s => {
+          if (s.conversationState !== 'waiting_doctor') return false;
+          if (!s.lastPatientMessageAt) return false;
+          const hoursSincePatientMessage = (now.getTime() - new Date(s.lastPatientMessageAt).getTime()) / (1000 * 60 * 60);
+          return hoursSincePatientMessage > 2;
+        })
+        .sort((a, b) => new Date(a.lastPatientMessageAt).getTime() - new Date(b.lastPatientMessageAt).getTime())
+        .slice(0, 10);
+
+      const riskUpgraded = sessions
+        .filter(s => {
+          const latest = s.latestReassessment;
+          if (!latest) return false;
+          return latest.previousRiskLevel !== latest.newRiskLevel && latest.createdAt >= oneDayAgo;
+        })
+        .sort((a, b) => new Date(b.latestReassessment.createdAt).getTime() - new Date(a.latestReassessment.createdAt).getTime())
+        .slice(0, 10);
+
       return {
         highRiskUnresolved,
         urgentAdminAttention,
         newlyCreated,
         overdueStuck,
-        recentlyUpdated
+        recentlyUpdated,
+        overdueDoctorReply,
+        riskUpgraded
+      };
+    },
+
+    async getAdminSla() {
+      const sessions = selectAllSessions.all().map(rowToSession);
+      const highRiskSessions = sessions.filter(s => s.assessment.riskLevel === 'Level 1' || s.assessment.riskLevel === 'Level 2');
+      const reviewDurations = [];
+      let highRiskReviewedOnTime = 0;
+      let highRiskReviewedLate = 0;
+      let waitingDoctorReplyOverdue = 0;
+      let recentRiskUpgrades = 0;
+
+      const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+      for (const session of highRiskSessions) {
+        if (session.reviewedAt) {
+          const reviewMinutes = (new Date(session.reviewedAt).getTime() - new Date(session.createdAt).getTime()) / (1000 * 60);
+          reviewDurations.push(reviewMinutes);
+          const target = session.assessment.riskLevel === 'Level 1' ? 5 : 30;
+          if (reviewMinutes <= target) highRiskReviewedOnTime++;
+          else highRiskReviewedLate++;
+        }
+      }
+
+      for (const session of sessions) {
+        if (session.conversationState === 'waiting_doctor' && session.lastPatientMessageAt) {
+          const overdueHours = (now.getTime() - new Date(session.lastPatientMessageAt).getTime()) / (1000 * 60 * 60);
+          if (overdueHours > 2) waitingDoctorReplyOverdue++;
+        }
+
+        if (session.latestReassessment && session.latestReassessment.previousRiskLevel !== session.latestReassessment.newRiskLevel && session.latestReassessment.createdAt >= oneDayAgo) {
+          recentRiskUpgrades++;
+        }
+      }
+
+      return {
+        highRiskReviewedOnTime,
+        highRiskReviewedLate,
+        waitingDoctorReplyOverdue,
+        recentRiskUpgrades,
+        avgHighRiskReviewMinutes: reviewDurations.length
+          ? Math.round(reviewDurations.reduce((sum, item) => sum + item, 0) / reviewDurations.length)
+          : null
       };
     }
   };
